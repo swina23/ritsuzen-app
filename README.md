@@ -1,69 +1,115 @@
-# React + TypeScript + Vite
+# 弓道記録アプリ
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+渋谷区弓道連盟の20射会・50射会の記録を効率的に管理するWebアプリケーションです。従来のExcel作成業務を自動化し、リアルタイムでの記録入力と結果表示を実現します。
 
-Currently, two official plugins are available:
+## 🎯 機能
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+### 実装済み機能
+- ✅ **大会設定**: 大会名、日付、ハンデ有無の設定
+- ✅ **参加者登録**: 氏名・段位の登録、削除、ハンデ自動計算
+- ✅ **記録入力**: 20射会（5立×4射）のタップ入力、リアルタイム集計
+- ✅ **結果表示**: 順位表、詳細記録、的中率、ハンデ適用結果
+- ✅ **レスポンシブデザイン**: スマホ・タブレット・PC対応
 
-## Expanding the ESLint configuration
+### 開発予定機能
+- 🔄 **Excel出力**: 現在のテンプレート形式での出力
+- 🔄 **50射会対応**: 1立目2射 + 2-13立目4射×12立
+- 🔄 **データ永続化**: LocalStorage/Firebase連携
+- 🔄 **テンプレート機能**: 常連参加者の情報保存
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## 🛠 技術構成
 
-```js
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- **フロントエンド**: React 18 + TypeScript
+- **ビルドツール**: Vite
+- **スタイル**: CSS3（レスポンシブデザイン）
+- **状態管理**: React Context API
+- **型安全性**: TypeScript strict mode
 
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
+## 🚀 セットアップ
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### 前提条件
+- Node.js (v18以上)
+- npm または yarn
+
+### インストール
+```bash
+# リポジトリをクローン
+git clone https://github.com/YOUR_USERNAME/kyudo-app.git
+cd kyudo-app
+
+# 依存関係をインストール
+npm install
+
+# 開発サーバーを起動
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+ブラウザで http://localhost:5173/ を開いてアクセスできます。
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## 📖 使用方法
 
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### 1. 大会設定
+- 大会名、開催日を設定
+- ハンデ機能の有効/無効を選択
+- 「大会を作成」ボタンで次のステップへ
+
+### 2. 参加者登録
+- 参加者の氏名と段位を入力
+- ハンデが自動計算されて表示
+- 必要に応じて参加者の削除も可能
+
+### 3. 記録入力
+- 立選択（第1立〜第5立）
+- 各参加者の射撃結果を○✕でタップ入力
+- リアルタイムで立計・総計が自動更新
+
+### 4. 結果表示
+- 順位表（基本順位・ハンデ適用順位）
+- 詳細記録（立別の射撃結果）
+- 的中率の表示
+
+## 🎨 スクリーンショット
+
+（今後スクリーンショットを追加予定）
+
+## 📊 データ構造
+
+20射会の記録は以下の形式で管理されます：
+
+```typescript
+interface Competition {
+  id: string;
+  name: string;
+  date: string;
+  type: '20' | '50';
+  status: 'created' | 'inProgress' | 'finished';
+  handicapEnabled: boolean;
+  participants: Participant[];
+  records: ParticipantRecord[];
+}
 ```
+
+## 🤝 コントリビューション
+
+このプロジェクトは渋谷区弓道連盟の業務効率化を目的としています。
+改善提案や機能追加のご要望がございましたら、Issueまたは Pull Request をお送りください。
+
+## 📝 ライセンス
+
+MIT License
+
+## 🏹 背景
+
+従来、渋谷区弓道連盟では20射会・50射会の記録をExcelで手動作成していました。
+このアプリケーションにより以下の課題を解決します：
+
+- **記録入力の効率化**: 手書き → タップ入力
+- **計算の自動化**: 手計算 → 自動集計
+- **リアルタイム更新**: Excel作成 → 即座の結果表示
+- **ミスの削減**: 計算エラーの防止
+
+---
+
+🤖 Generated with [Claude Code](https://claude.ai/code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>
