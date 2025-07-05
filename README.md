@@ -1,4 +1,4 @@
-# 弓道記録アプリ
+# 立禅の会 記録アプリ
 
 渋谷区弓道連盟の20射会・50射会の記録を効率的に管理するWebアプリケーションです。従来のExcel作成業務を自動化し、リアルタイムでの記録入力と結果表示を実現します。
 
@@ -34,8 +34,8 @@
 ### インストール
 ```bash
 # リポジトリをクローン
-git clone https://github.com/YOUR_USERNAME/kyudo-app.git
-cd kyudo-app
+git clone https://github.com/YOUR_USERNAME/ritsuzen-app.git
+cd ritsuzen-app
 
 # 依存関係をインストール
 npm install
