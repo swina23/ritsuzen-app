@@ -1,5 +1,6 @@
 import React from 'react';
 import { useCompetition } from '../contexts/CompetitionContext';
+import { exportToExcel, exportToCSV } from '../utils/excelExport';
 
 const Results: React.FC = () => {
   const { state } = useCompetition();
@@ -15,9 +16,39 @@ const Results: React.FC = () => {
     return b.totalHits - a.totalHits;
   });
 
+  const handleExcelExport = () => {
+    if (state.competition) {
+      exportToExcel({
+        competition: state.competition,
+        participants: state.competition.participants,
+        records: state.competition.records
+      });
+    }
+  };
+
+  const handleCSVExport = () => {
+    if (state.competition) {
+      exportToCSV({
+        competition: state.competition,
+        participants: state.competition.participants,
+        records: state.competition.records
+      });
+    }
+  };
+
   return (
     <div className="results">
-      <h2>結果表示</h2>
+      <div className="results-header">
+        <h2>結果表示</h2>
+        <div className="export-buttons">
+          <button onClick={handleExcelExport} className="export-btn excel-btn">
+            📊 Excel出力
+          </button>
+          <button onClick={handleCSVExport} className="export-btn csv-btn">
+            📋 CSV出力
+          </button>
+        </div>
+      </div>
       
       <div className="competition-info">
         <h3>{state.competition.name}</h3>
