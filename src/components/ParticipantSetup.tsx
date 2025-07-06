@@ -9,6 +9,10 @@ const ParticipantSetup: React.FC = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // 大会終了後は参加者追加を無効化
+    if (state.competition?.status === 'finished') {
+      return;
+    }
     if (name.trim()) {
       addParticipant({ name: name.trim(), rank });
       setName('');
@@ -18,9 +22,17 @@ const ParticipantSetup: React.FC = () => {
 
   if (!state.competition) return null;
 
+  const isFinished = state.competition.status === 'finished';
+
   return (
     <div className="participant-setup">
       <h2>参加者登録</h2>
+      
+      {isFinished && (
+        <div className="finished-notice">
+          <p>⚠️ 大会は終了しています。参加者の追加・変更はできません。</p>
+        </div>
+      )}
       
       <form onSubmit={handleSubmit} className="participant-form">
         <div className="form-group">
@@ -32,6 +44,7 @@ const ParticipantSetup: React.FC = () => {
             onChange={(e) => setName(e.target.value)}
             placeholder="参加者名を入力"
             required
+            disabled={isFinished}
           />
         </div>
         
@@ -41,6 +54,7 @@ const ParticipantSetup: React.FC = () => {
             id="participant-rank"
             value={rank}
             onChange={(e) => setRank(Number(e.target.value))}
+            disabled={isFinished}
           >
             {[1, 2, 3, 4, 5, 6, 7, 8].map(r => (
               <option key={r} value={r}>{r === 1 ? '初段' : `${r}段`}</option>
@@ -48,7 +62,7 @@ const ParticipantSetup: React.FC = () => {
           </select>
         </div>
         
-        <button type="submit" className="add-btn">
+        <button type="submit" className="add-btn" disabled={isFinished}>
           参加者を追加
         </button>
       </form>
@@ -76,7 +90,7 @@ const ParticipantSetup: React.FC = () => {
                   <button
                     onClick={() => moveParticipantUp(participant.id)}
                     className="move-btn up-btn"
-                    disabled={index === 0}
+                    disabled={index === 0 || isFinished}
                     title="上に移動"
                   >
                     ↑
@@ -84,7 +98,7 @@ const ParticipantSetup: React.FC = () => {
                   <button
                     onClick={() => moveParticipantDown(participant.id)}
                     className="move-btn down-btn"
-                    disabled={index === state.competition!.participants.length - 1}
+                    disabled={index === state.competition!.participants.length - 1 || isFinished}
                     title="下に移動"
                   >
                     ↓
@@ -92,6 +106,7 @@ const ParticipantSetup: React.FC = () => {
                   <button
                     onClick={() => removeParticipant(participant.id)}
                     className="remove-btn"
+                    disabled={isFinished}
                   >
                     削除
                   </button>
