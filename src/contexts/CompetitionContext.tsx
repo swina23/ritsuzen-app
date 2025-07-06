@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, ReactNode, useEffect } from 'react';
-import { Competition, CompetitionState, Participant, ParticipantRecord } from '../types';
+import { Competition, CompetitionState, Participant } from '../types';
 import { initializeParticipantRecord, updateParticipantRecord, calculateRankings } from '../utils/calculations';
 import { saveCurrentCompetition, loadCurrentCompetition, saveCompetitionToHistory } from '../utils/localStorage';
 
@@ -17,7 +17,7 @@ interface CompetitionContextType {
 
 type CompetitionAction =
   | { type: 'CREATE_COMPETITION'; payload: { name: string; date: string; handicapEnabled: boolean } }
-  | { type: 'ADD_PARTICIPANT'; payload: Omit<Participant, 'id'> }
+  | { type: 'ADD_PARTICIPANT'; payload: Omit<Participant, 'id' | 'order'> }
   | { type: 'REMOVE_PARTICIPANT'; payload: string }
   | { type: 'MOVE_PARTICIPANT_UP'; payload: string }
   | { type: 'MOVE_PARTICIPANT_DOWN'; payload: string }

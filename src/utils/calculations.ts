@@ -21,7 +21,7 @@ export const calculateAdjustedScore = (totalHits: number, handicap: number): num
 };
 
 // 将来的なタイブレーカー用の比較関数（現在は使用せず）
-const compareTieBreaker = (a: ParticipantRecord, b: ParticipantRecord): number => {
+const compareTieBreaker = (_a: ParticipantRecord, _b: ParticipantRecord): number => {
   // 将来的に以下のようなルールを実装可能：
   // 1. 後半立（4立目、5立目）の成績で比較
   // 2. より多くの連続的中がある方を上位

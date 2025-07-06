@@ -89,7 +89,7 @@ const Results: React.FC = () => {
             </tr>
           </thead>
           <tbody>
-            {sortedRecords.map((record, index) => {
+            {sortedRecords.map((record, _index) => {
               const participant = state.competition?.participants.find(p => p.id === record.participantId);
               if (!participant) return null;
 
@@ -105,7 +105,7 @@ const Results: React.FC = () => {
                   ))}
                   <td className="total-hits">{record.totalHits}</td>
                   <td className="hit-rate">{(record.hitRate * 100).toFixed(1)}%</td>
-                  {state.competition.handicapEnabled && (
+                  {state.competition?.handicapEnabled && (
                     <>
                       <td className="rank">{record.rank}</td>
                       <td className="handicap">{record.handicap}</td>
@@ -121,7 +121,7 @@ const Results: React.FC = () => {
 
       <div className="detailed-results">
         <h3>詳細記録</h3>
-        {sortedRecords.map((record, index) => {
+        {sortedRecords.map((record, _index) => {
           const participant = state.competition?.participants.find(p => p.id === record.participantId);
           if (!participant) return null;
 

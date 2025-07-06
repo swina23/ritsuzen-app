@@ -1,5 +1,5 @@
 import { Competition } from '../types';
-import { StorageData, getCompetitionHistory } from './localStorage';
+import { getCompetitionHistory } from './localStorage';
 import { formatRank } from './formatters';
 
 export interface ExportData {
@@ -168,7 +168,7 @@ export const exportCompetitionAsCSV = (competition: Competition): void => {
       return b.totalHits - a.totalHits;
     });
     
-    sortedRecords.forEach((record, index) => {
+    sortedRecords.forEach((record, _index) => {
       const participant = competition.participants.find(p => p.id === record.participantId);
       if (!participant) return;
       

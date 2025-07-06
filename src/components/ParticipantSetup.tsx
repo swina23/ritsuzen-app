@@ -84,7 +84,7 @@ const ParticipantSetup: React.FC = () => {
                   <button
                     onClick={() => moveParticipantDown(participant.id)}
                     className="move-btn down-btn"
-                    disabled={index === state.competition.participants.length - 1}
+                    disabled={index === state.competition!.participants.length - 1}
                     title="下に移動"
                   >
                     ↓

@@ -1,7 +1,6 @@
 import { Competition } from '../types';
 
 const STORAGE_KEY = 'ritsuzen-app-data';
-const COMPETITIONS_KEY = 'ritsuzen-competitions';
 
 export interface StorageData {
   currentCompetition: Competition | null;

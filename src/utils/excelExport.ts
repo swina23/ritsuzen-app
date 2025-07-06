@@ -118,7 +118,7 @@ const createMainSheetData = (
   });
   
   // 各参加者のデータ行
-  sortedRecords.forEach((record, index) => {
+  sortedRecords.forEach((record, _index) => {
     const participant = participants.find(p => p.id === record.participantId);
     if (!participant) return;
     
@@ -128,7 +128,7 @@ const createMainSheetData = (
     ];
     
     // 各射の結果を追加
-    record.rounds.forEach((round, roundIndex) => {
+    record.rounds.forEach((round, _roundIndex) => {
       round.shots.forEach(shot => {
         row.push(shot.hit ? '○' : '×');
       });
