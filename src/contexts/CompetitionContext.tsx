@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useReducer, ReactNode } from 'react';
+import React, { createContext, useContext, useReducer, ReactNode, useEffect } from 'react';
 import { Competition, CompetitionState, Participant, ParticipantRecord } from '../types';
 import { initializeParticipantRecord, updateParticipantRecord, calculateRankings } from '../utils/calculations';
+import { saveCurrentCompetition, loadCurrentCompetition, saveCompetitionToHistory } from '../utils/localStorage';
 
 interface CompetitionContextType {
   state: CompetitionState;
@@ -18,7 +19,8 @@ type CompetitionAction =
   | { type: 'REMOVE_PARTICIPANT'; payload: string }
   | { type: 'UPDATE_SHOT'; payload: { participantId: string; roundNumber: number; shotIndex: number; hit: boolean } }
   | { type: 'FINISH_COMPETITION' }
-  | { type: 'RESET_COMPETITION' };
+  | { type: 'RESET_COMPETITION' }
+  | { type: 'LOAD_COMPETITION'; payload: Competition | null };
 
 const initialState: CompetitionState = {
   competition: null,
@@ -140,6 +142,13 @@ const competitionReducer = (state: CompetitionState, action: CompetitionAction):
       return initialState;
     }
 
+    case 'LOAD_COMPETITION': {
+      return {
+        ...state,
+        competition: action.payload
+      };
+    }
+
     default:
       return state;
   }
@@ -147,6 +156,21 @@ const competitionReducer = (state: CompetitionState, action: CompetitionAction):
 
 export const CompetitionProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(competitionReducer, initialState);
+
+  // アプリ起動時にLocalStorageからデータを読み込み
+  useEffect(() => {
+    const savedCompetition = loadCurrentCompetition();
+    if (savedCompetition) {
+      dispatch({ type: 'LOAD_COMPETITION', payload: savedCompetition });
+    }
+  }, []);
+
+  // 大会データが変更されるたびにLocalStorageに保存
+  useEffect(() => {
+    if (state.competition) {
+      saveCurrentCompetition(state.competition);
+    }
+  }, [state.competition]);
 
   const createCompetition = (name: string, date: string, handicapEnabled: boolean) => {
     dispatch({ type: 'CREATE_COMPETITION', payload: { name, date, handicapEnabled } });
@@ -165,10 +189,21 @@ export const CompetitionProvider: React.FC<{ children: ReactNode }> = ({ childre
   };
 
   const finishCompetition = () => {
+    if (state.competition) {
+      // 大会終了時に履歴に保存
+      const finishedCompetition = {
+        ...state.competition,
+        status: 'finished' as const,
+        updatedAt: new Date().toISOString()
+      };
+      saveCompetitionToHistory(finishedCompetition);
+    }
     dispatch({ type: 'FINISH_COMPETITION' });
   };
 
   const resetCompetition = () => {
+    // リセット時にLocalStorageもクリア
+    saveCurrentCompetition(null);
     dispatch({ type: 'RESET_COMPETITION' });
   };
 

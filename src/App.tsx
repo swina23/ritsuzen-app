@@ -4,9 +4,10 @@ import CompetitionSetup from './components/CompetitionSetup';
 import ParticipantSetup from './components/ParticipantSetup';
 import ScoreInput from './components/ScoreInput';
 import Results from './components/Results';
+import DataManager from './components/DataManager';
 import './App.css';
 
-type AppView = 'setup' | 'participants' | 'scoring' | 'results';
+type AppView = 'setup' | 'participants' | 'scoring' | 'results' | 'data';
 
 const AppContent: React.FC = () => {
   const { state, finishCompetition, resetCompetition } = useCompetition();
@@ -26,6 +27,8 @@ const AppContent: React.FC = () => {
         return <ScoreInput />;
       case 'results':
         return <Results />;
+      case 'data':
+        return <DataManager />;
       default:
         return <CompetitionSetup />;
     }
@@ -77,6 +80,12 @@ const AppContent: React.FC = () => {
           disabled={!canProceedToScoring}
         >
           結果表示
+        </button>
+        <button 
+          onClick={() => setCurrentView('data')}
+          className={currentView === 'data' ? 'active' : ''}
+        >
+          データ管理
         </button>
       </nav>
 

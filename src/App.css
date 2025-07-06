@@ -537,3 +537,216 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Data Manager */
+.data-manager h2 {
+  color: #2c3e50;
+  margin-bottom: 30px;
+}
+
+.storage-info {
+  background-color: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 30px;
+}
+
+.storage-info h3 {
+  color: #2c3e50;
+  margin-bottom: 15px;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+}
+
+.info-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px;
+  background-color: white;
+  border-radius: 4px;
+  border: 1px solid #dee2e6;
+}
+
+.info-item .label {
+  font-weight: bold;
+  color: #666;
+}
+
+.info-item .value {
+  color: #2c3e50;
+}
+
+.export-section, .import-section, .history-section, .danger-section {
+  margin-bottom: 30px;
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
+}
+
+.export-section h3, .import-section h3, .history-section h3, .danger-section h3 {
+  color: #2c3e50;
+  margin-bottom: 15px;
+}
+
+.button-group {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.export-btn, .import-btn {
+  padding: 12px 24px;
+  background-color: #2196f3;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.2s;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.export-btn:hover, .import-btn:hover {
+  background-color: #1976d2;
+}
+
+.export-btn:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.import-btn {
+  background-color: #4caf50;
+}
+
+.import-btn:hover {
+  background-color: #45a049;
+}
+
+.danger-btn {
+  padding: 12px 24px;
+  background-color: #f44336;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.2s;
+}
+
+.danger-btn:hover {
+  background-color: #da190b;
+}
+
+.description {
+  color: #666;
+  font-size: 14px;
+  margin: 0;
+}
+
+.status-message {
+  padding: 15px;
+  margin: 20px 0;
+  border-radius: 4px;
+  background-color: #e3f2fd;
+  border: 1px solid #2196f3;
+  color: #1976d2;
+  font-weight: bold;
+}
+
+.history-list {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.history-item {
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  border: 1px solid #dee2e6;
+}
+
+.competition-info {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.competition-info strong {
+  color: #2c3e50;
+}
+
+.competition-info .date {
+  color: #666;
+}
+
+.competition-info .participants {
+  color: #2196f3;
+  font-size: 14px;
+}
+
+.competition-info .status {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.status.finished {
+  background-color: #e8f5e8;
+  color: #388e3c;
+}
+
+.status.inProgress {
+  background-color: #fff3e0;
+  color: #f57c00;
+}
+
+.status.created {
+  background-color: #e3f2fd;
+  color: #1976d2;
+}
+
+.more-text {
+  color: #666;
+  font-style: italic;
+  text-align: center;
+  margin-top: 15px;
+}
+
+.danger-section {
+  border-color: #f44336;
+  background-color: #ffeaea;
+}
+
+.danger-section h3 {
+  color: #f44336;
+}
+
+/* Responsive for Data Manager */
+@media (max-width: 768px) {
+  .button-group {
+    flex-direction: column;
+  }
+  
+  .export-btn, .import-btn, .danger-btn {
+    width: 100%;
+  }
+  
+  .info-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .competition-info {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+  }
+}
