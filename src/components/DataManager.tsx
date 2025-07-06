@@ -74,10 +74,10 @@ const DataManager: React.FC = () => {
         setImportStatus(`✅ 大会「${importedData.competition.name}」を読み込みました`);
       }
       
-      // ページリロードで反映
+      // ステータスメッセージを3秒後にクリア（リロードなし）
       setTimeout(() => {
-        window.location.reload();
-      }, 2000);
+        setImportStatus('');
+      }, 3000);
       
     } catch (error) {
       setImportStatus(`❌ ${(error as Error).message}`);
