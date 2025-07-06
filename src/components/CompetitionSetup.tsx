@@ -3,7 +3,7 @@ import { useCompetition } from '../contexts/CompetitionContext';
 
 const CompetitionSetup: React.FC = () => {
   const { state, createCompetition } = useCompetition();
-  const [name, setName] = useState('立禅の会');
+  const [name, setName] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [handicapEnabled, setHandicapEnabled] = useState(true);
 
@@ -36,6 +36,7 @@ const CompetitionSetup: React.FC = () => {
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
+            placeholder="大会名を入力してください"
             required
             disabled={hasActiveCompetition}
           />

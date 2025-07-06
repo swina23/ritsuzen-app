@@ -31,7 +31,7 @@ const ScoreInput: React.FC = () => {
             onClick={() => setSelectedRound(round)}
             className={selectedRound === round ? 'active' : ''}
           >
-            第{round}立
+{round}立目
           </button>
         ))}
       </div>

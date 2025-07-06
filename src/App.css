@@ -279,6 +279,7 @@
   padding: 8px 16px;
   border: 1px solid #ddd;
   background-color: white;
+  color: #333;
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.2s;
@@ -326,6 +327,9 @@
   font-weight: bold;
   cursor: pointer;
   transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .shot-btn.hit {
