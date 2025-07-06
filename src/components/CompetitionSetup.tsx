@@ -22,8 +22,8 @@ const CompetitionSetup: React.FC = () => {
       
       {hasActiveCompetition && (
         <div className="active-competition-warning">
-          <p>⚠️ 既に進行中の大会があります</p>
-          <p>「{state.competition?.name} ({state.competition?.date})」</p>
+          <p>⚠️ 現在大会が進行中です。</p>
+          <p>「{state.competition?.name}」</p>
           <p>新しい大会を作成するには、現在の大会をリセットしてください。</p>
         </div>
       )}
