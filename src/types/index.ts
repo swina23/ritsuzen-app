@@ -2,6 +2,7 @@ export interface Participant {
   id: string;
   name: string;
   rank: number; // 段位
+  order: number; // 表示順序
   groupId?: string;
 }
 

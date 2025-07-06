@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useCompetition } from '../contexts/CompetitionContext';
+import { formatRank } from '../utils/formatters';
 
 const ParticipantSetup: React.FC = () => {
-  const { state, addParticipant, removeParticipant } = useCompetition();
+  const { state, addParticipant, removeParticipant, moveParticipantUp, moveParticipantDown } = useCompetition();
   const [name, setName] = useState('');
   const [rank, setRank] = useState(1);
 
@@ -41,8 +42,8 @@ const ParticipantSetup: React.FC = () => {
             value={rank}
             onChange={(e) => setRank(Number(e.target.value))}
           >
-            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(r => (
-              <option key={r} value={r}>{r}段</option>
+            {[1, 2, 3, 4, 5, 6, 7, 8].map(r => (
+              <option key={r} value={r}>{r === 1 ? '初段' : `${r}段`}</option>
             ))}
           </select>
         </div>
@@ -58,22 +59,43 @@ const ParticipantSetup: React.FC = () => {
           <p>参加者がいません</p>
         ) : (
           <ul>
-            {state.competition.participants.map((participant) => (
+            {state.competition.participants
+              .sort((a, b) => (a.order || 0) - (b.order || 0))
+              .map((participant, index) => (
               <li key={participant.id} className="participant-item">
                 <span className="participant-info">
-                  {participant.name} ({participant.rank}段)
+                  <span className="participant-order">{index + 1}.</span>
+                  {participant.name} ({formatRank(participant.rank)})
                   {state.competition?.handicapEnabled && (
                     <span className="handicap">
                       ハンデ: {participant.rank * -2}
                     </span>
                   )}
                 </span>
-                <button
-                  onClick={() => removeParticipant(participant.id)}
-                  className="remove-btn"
-                >
-                  削除
-                </button>
+                <div className="participant-actions">
+                  <button
+                    onClick={() => moveParticipantUp(participant.id)}
+                    className="move-btn up-btn"
+                    disabled={index === 0}
+                    title="上に移動"
+                  >
+                    ↑
+                  </button>
+                  <button
+                    onClick={() => moveParticipantDown(participant.id)}
+                    className="move-btn down-btn"
+                    disabled={index === state.competition.participants.length - 1}
+                    title="下に移動"
+                  >
+                    ↓
+                  </button>
+                  <button
+                    onClick={() => removeParticipant(participant.id)}
+                    className="remove-btn"
+                  >
+                    削除
+                  </button>
+                </div>
               </li>
             ))}
           </ul>

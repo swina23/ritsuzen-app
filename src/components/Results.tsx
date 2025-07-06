@@ -1,6 +1,7 @@
 import React from 'react';
 import { useCompetition } from '../contexts/CompetitionContext';
 import { exportToExcel, exportToCSV } from '../utils/excelExport';
+import { formatRank } from '../utils/formatters';
 
 const Results: React.FC = () => {
   const { state } = useCompetition();
@@ -15,6 +16,13 @@ const Results: React.FC = () => {
     }
     return b.totalHits - a.totalHits;
   });
+
+  const getDisplayRank = (record: any): number => {
+    if (state.competition?.handicapEnabled) {
+      return record.rankWithHandicap;
+    }
+    return record.rank;
+  };
 
   const handleExcelExport = () => {
     if (state.competition) {
@@ -73,8 +81,9 @@ const Results: React.FC = () => {
               <th>的中率</th>
               {state.competition.handicapEnabled && (
                 <>
+                  <th>調整前順位</th>
                   <th>ハンデ</th>
-                  <th>調整後</th>
+                  <th>調整後的中</th>
                 </>
               )}
             </tr>
@@ -86,9 +95,9 @@ const Results: React.FC = () => {
 
               return (
                 <tr key={record.participantId}>
-                  <td className="rank">{index + 1}</td>
+                  <td className="rank">{getDisplayRank(record)}</td>
                   <td>{participant.name}</td>
-                  <td>{participant.rank}段</td>
+                  <td>{formatRank(participant.rank)}</td>
                   {record.rounds.map((round, roundIndex) => (
                     <td key={roundIndex} className="round-score">
                       {round.hits}
@@ -98,6 +107,7 @@ const Results: React.FC = () => {
                   <td className="hit-rate">{(record.hitRate * 100).toFixed(1)}%</td>
                   {state.competition.handicapEnabled && (
                     <>
+                      <td className="rank">{record.rank}</td>
                       <td className="handicap">{record.handicap}</td>
                       <td className="adjusted-score">{record.adjustedScore}</td>
                     </>
@@ -118,7 +128,7 @@ const Results: React.FC = () => {
           return (
             <div key={record.participantId} className="participant-detail">
               <h4>
-                {index + 1}位: {participant.name} ({participant.rank}段)
+                {getDisplayRank(record)}位: {participant.name} ({formatRank(participant.rank)})
                 - {record.totalHits}中 ({(record.hitRate * 100).toFixed(1)}%)
               </h4>
               <div className="shots-grid">

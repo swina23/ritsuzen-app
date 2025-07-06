@@ -112,6 +112,10 @@ const AppContent: React.FC = () => {
           </button>
         </div>
       )}
+
+      <footer className="app-footer">
+        <p>© 2025 hirosetomohiko All rights reserved.</p>
+      </footer>
     </div>
   );
 };

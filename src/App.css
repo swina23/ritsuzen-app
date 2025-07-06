@@ -236,6 +236,45 @@
   display: flex;
   gap: 10px;
   align-items: center;
+  flex: 1;
+}
+
+.participant-order {
+  font-weight: bold;
+  color: #2196f3;
+  min-width: 25px;
+}
+
+.participant-actions {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+
+.move-btn {
+  background-color: #2196f3;
+  color: white;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  min-width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.move-btn:hover:not(:disabled) {
+  background-color: #1976d2;
+}
+
+.move-btn:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .handicap {
@@ -447,9 +486,10 @@
   font-size: 18px;
 }
 
-.total-hits {
+.results-table .total-hits,
+.results-table .adjusted-score {
   font-weight: bold;
-  color: #4caf50;
+  color: #f44336 !important;
 }
 
 .hit-rate {
@@ -533,6 +573,22 @@
   font-weight: bold;
   color: #2c3e50;
   font-size: 12px;
+}
+
+/* Footer */
+.app-footer {
+  margin-top: 40px;
+  padding: 20px;
+  text-align: center;
+  border-top: 1px solid #dee2e6;
+  background-color: #f8f9fa;
+}
+
+.app-footer p {
+  margin: 0;
+  color: #666;
+  font-size: 12px;
+  font-weight: 400;
 }
 
 /* Responsive Design */

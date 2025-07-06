@@ -1,5 +1,6 @@
 import { Competition } from '../types';
 import { StorageData, getCompetitionHistory } from './localStorage';
+import { formatRank } from './formatters';
 
 export interface ExportData {
   version: string;
@@ -150,11 +151,11 @@ export const exportCompetitionAsCSV = (competition: Competition): void => {
     const headers = [
       '順位', '参加者名', '段位', 
       '1立', '2立', '3立', '4立', '5立',
-      '的中数', '的中率'
+      '的中', '的中率'
     ];
     
     if (competition.handicapEnabled) {
-      headers.push('ハンデ', '調整後', 'ハンデ順位');
+      headers.push('調整前順位', 'ハンデ', '調整後的中', 'ハンデ調整後順位');
     }
     
     const csvData = [headers];
@@ -171,10 +172,12 @@ export const exportCompetitionAsCSV = (competition: Competition): void => {
       const participant = competition.participants.find(p => p.id === record.participantId);
       if (!participant) return;
       
+      const displayRank = competition.handicapEnabled ? record.rankWithHandicap : record.rank;
+      
       const row = [
-        (index + 1).toString(),
+        displayRank.toString(),
         participant.name,
-        `${participant.rank}段`,
+        formatRank(participant.rank),
         ...record.rounds.map(round => round.hits.toString()),
         record.totalHits.toString(),
         `${(record.hitRate * 100).toFixed(1)}%`
@@ -182,6 +185,7 @@ export const exportCompetitionAsCSV = (competition: Competition): void => {
       
       if (competition.handicapEnabled) {
         row.push(
+          record.rank.toString(),
           record.handicap.toString(),
           record.adjustedScore.toString(),
           record.rankWithHandicap.toString()

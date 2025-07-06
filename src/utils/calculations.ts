@@ -20,18 +20,47 @@ export const calculateAdjustedScore = (totalHits: number, handicap: number): num
   return totalHits + handicap;
 };
 
-export const calculateRankings = (records: ParticipantRecord[]): ParticipantRecord[] => {
-  // 基本順位（的中数順）
-  const sortedByHits = [...records].sort((a, b) => b.totalHits - a.totalHits);
-  sortedByHits.forEach((record, index) => {
-    record.rank = index + 1;
-  });
+// 将来的なタイブレーカー用の比較関数（現在は使用せず）
+const compareTieBreaker = (a: ParticipantRecord, b: ParticipantRecord): number => {
+  // 将来的に以下のようなルールを実装可能：
+  // 1. 後半立（4立目、5立目）の成績で比較
+  // 2. より多くの連続的中がある方を上位
+  // 3. 参加者登録順で比較
+  
+  // 現在は同順位として扱う
+  return 0;
+};
 
-  // ハンデ順位（調整後スコア順）
-  const sortedByAdjusted = [...records].sort((a, b) => b.adjustedScore - a.adjustedScore);
-  sortedByAdjusted.forEach((record, index) => {
-    record.rankWithHandicap = index + 1;
+export const calculateRankings = (records: ParticipantRecord[]): ParticipantRecord[] => {
+  // 基本順位（的中数順）の同順位対応
+  const sortedByHits = [...records].sort((a, b) => {
+    const hitsDiff = b.totalHits - a.totalHits;
+    if (hitsDiff !== 0) return hitsDiff;
+    return compareTieBreaker(a, b);
   });
+  
+  let currentRank = 1;
+  for (let i = 0; i < sortedByHits.length; i++) {
+    if (i > 0 && sortedByHits[i].totalHits !== sortedByHits[i - 1].totalHits) {
+      currentRank = i + 1;
+    }
+    sortedByHits[i].rank = currentRank;
+  }
+
+  // ハンデ順位（調整後スコア順）の同順位対応
+  const sortedByAdjusted = [...records].sort((a, b) => {
+    const adjustedDiff = b.adjustedScore - a.adjustedScore;
+    if (adjustedDiff !== 0) return adjustedDiff;
+    return compareTieBreaker(a, b);
+  });
+  
+  currentRank = 1;
+  for (let i = 0; i < sortedByAdjusted.length; i++) {
+    if (i > 0 && sortedByAdjusted[i].adjustedScore !== sortedByAdjusted[i - 1].adjustedScore) {
+      currentRank = i + 1;
+    }
+    sortedByAdjusted[i].rankWithHandicap = currentRank;
+  }
 
   return records;
 };

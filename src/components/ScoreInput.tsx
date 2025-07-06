@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useCompetition } from '../contexts/CompetitionContext';
+import { formatRank } from '../utils/formatters';
 
 const ScoreInput: React.FC = () => {
   const { state, updateShot } = useCompetition();
@@ -51,14 +52,16 @@ const ScoreInput: React.FC = () => {
             </tr>
           </thead>
           <tbody>
-            {state.competition.participants.map((participant) => {
+            {state.competition.participants
+              .sort((a, b) => (a.order || 0) - (b.order || 0))
+              .map((participant) => {
               const record = state.competition?.records.find(r => r.participantId === participant.id);
               const round = record?.rounds.find(r => r.roundNumber === selectedRound);
               
               return (
                 <tr key={participant.id}>
                   <td>{participant.name}</td>
-                  <td>{participant.rank}段</td>
+                  <td>{formatRank(participant.rank)}</td>
                   {[0, 1, 2, 3].map(shotIndex => (
                     <td key={shotIndex}>
                       <button

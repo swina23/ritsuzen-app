@@ -6,8 +6,10 @@ import { saveCurrentCompetition, loadCurrentCompetition, saveCompetitionToHistor
 interface CompetitionContextType {
   state: CompetitionState;
   createCompetition: (name: string, date: string, handicapEnabled: boolean) => void;
-  addParticipant: (participant: Omit<Participant, 'id'>) => void;
+  addParticipant: (participant: Omit<Participant, 'id' | 'order'>) => void;
   removeParticipant: (participantId: string) => void;
+  moveParticipantUp: (participantId: string) => void;
+  moveParticipantDown: (participantId: string) => void;
   updateShot: (participantId: string, roundNumber: number, shotIndex: number, hit: boolean) => void;
   finishCompetition: () => void;
   resetCompetition: () => void;
@@ -17,6 +19,8 @@ type CompetitionAction =
   | { type: 'CREATE_COMPETITION'; payload: { name: string; date: string; handicapEnabled: boolean } }
   | { type: 'ADD_PARTICIPANT'; payload: Omit<Participant, 'id'> }
   | { type: 'REMOVE_PARTICIPANT'; payload: string }
+  | { type: 'MOVE_PARTICIPANT_UP'; payload: string }
+  | { type: 'MOVE_PARTICIPANT_DOWN'; payload: string }
   | { type: 'UPDATE_SHOT'; payload: { participantId: string; roundNumber: number; shotIndex: number; hit: boolean } }
   | { type: 'FINISH_COMPETITION' }
   | { type: 'RESET_COMPETITION' }
@@ -55,9 +59,11 @@ const competitionReducer = (state: CompetitionState, action: CompetitionAction):
     case 'ADD_PARTICIPANT': {
       if (!state.competition) return state;
       
+      const nextOrder = Math.max(0, ...state.competition.participants.map(p => p.order || 0)) + 1;
       const participant: Participant = {
         ...action.payload,
-        id: Date.now().toString()
+        id: Date.now().toString(),
+        order: nextOrder
       };
       
       const record = initializeParticipantRecord(participant);
@@ -83,6 +89,64 @@ const competitionReducer = (state: CompetitionState, action: CompetitionAction):
           ...state.competition,
           participants: state.competition.participants.filter(p => p.id !== participantId),
           records: state.competition.records.filter(r => r.participantId !== participantId),
+          updatedAt: new Date().toISOString()
+        }
+      };
+    }
+
+    case 'MOVE_PARTICIPANT_UP': {
+      if (!state.competition) return state;
+      
+      const participantId = action.payload;
+      const sortedParticipants = [...state.competition.participants].sort((a, b) => (a.order || 0) - (b.order || 0));
+      const currentIndex = sortedParticipants.findIndex(p => p.id === participantId);
+      
+      if (currentIndex <= 0) return state; // Already at top
+      
+      // Swap positions in array
+      [sortedParticipants[currentIndex], sortedParticipants[currentIndex - 1]] = 
+      [sortedParticipants[currentIndex - 1], sortedParticipants[currentIndex]];
+      
+      // Reassign order values sequentially
+      const reorderedParticipants = sortedParticipants.map((participant, index) => ({
+        ...participant,
+        order: index + 1
+      }));
+      
+      return {
+        ...state,
+        competition: {
+          ...state.competition,
+          participants: reorderedParticipants,
+          updatedAt: new Date().toISOString()
+        }
+      };
+    }
+
+    case 'MOVE_PARTICIPANT_DOWN': {
+      if (!state.competition) return state;
+      
+      const participantId = action.payload;
+      const sortedParticipants = [...state.competition.participants].sort((a, b) => (a.order || 0) - (b.order || 0));
+      const currentIndex = sortedParticipants.findIndex(p => p.id === participantId);
+      
+      if (currentIndex >= sortedParticipants.length - 1) return state; // Already at bottom
+      
+      // Swap positions in array
+      [sortedParticipants[currentIndex], sortedParticipants[currentIndex + 1]] = 
+      [sortedParticipants[currentIndex + 1], sortedParticipants[currentIndex]];
+      
+      // Reassign order values sequentially
+      const reorderedParticipants = sortedParticipants.map((participant, index) => ({
+        ...participant,
+        order: index + 1
+      }));
+      
+      return {
+        ...state,
+        competition: {
+          ...state.competition,
+          participants: reorderedParticipants,
           updatedAt: new Date().toISOString()
         }
       };
@@ -143,9 +207,25 @@ const competitionReducer = (state: CompetitionState, action: CompetitionAction):
     }
 
     case 'LOAD_COMPETITION': {
+      if (!action.payload) {
+        return {
+          ...state,
+          competition: null
+        };
+      }
+
+      // 既存データのマイグレーション: orderフィールドが欠けている場合は追加
+      const migratedParticipants = action.payload.participants.map((participant, index) => ({
+        ...participant,
+        order: participant.order !== undefined ? participant.order : index + 1
+      }));
+
       return {
         ...state,
-        competition: action.payload
+        competition: {
+          ...action.payload,
+          participants: migratedParticipants
+        }
       };
     }
 
@@ -176,12 +256,20 @@ export const CompetitionProvider: React.FC<{ children: ReactNode }> = ({ childre
     dispatch({ type: 'CREATE_COMPETITION', payload: { name, date, handicapEnabled } });
   };
 
-  const addParticipant = (participant: Omit<Participant, 'id'>) => {
+  const addParticipant = (participant: Omit<Participant, 'id' | 'order'>) => {
     dispatch({ type: 'ADD_PARTICIPANT', payload: participant });
   };
 
   const removeParticipant = (participantId: string) => {
     dispatch({ type: 'REMOVE_PARTICIPANT', payload: participantId });
+  };
+
+  const moveParticipantUp = (participantId: string) => {
+    dispatch({ type: 'MOVE_PARTICIPANT_UP', payload: participantId });
+  };
+
+  const moveParticipantDown = (participantId: string) => {
+    dispatch({ type: 'MOVE_PARTICIPANT_DOWN', payload: participantId });
   };
 
   const updateShot = (participantId: string, roundNumber: number, shotIndex: number, hit: boolean) => {
@@ -215,6 +303,8 @@ export const CompetitionProvider: React.FC<{ children: ReactNode }> = ({ childre
       createCompetition,
       addParticipant,
       removeParticipant,
+      moveParticipantUp,
+      moveParticipantDown,
       updateShot,
       finishCompetition,
       resetCompetition

@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx';
 import { Competition, Participant, ParticipantRecord } from '../types';
+import { formatRank } from './formatters';
 
 export interface ExcelExportData {
   competition: Competition;
@@ -99,11 +100,11 @@ const createMainSheetData = (
     '9射', '10射', '11射', '12射', '3計',
     '13射', '14射', '15射', '16射', '4計',
     '17射', '18射', '19射', '20射', '5計',
-    '的中計', '矢数', '的中率', '順位'
+    '的中', '矢数', '的中率', '調整前順位'
   ];
   
   if (competition.handicapEnabled) {
-    headers.push('ハンデ', '換算後', 'ハンデ順位');
+    headers.push('ハンデ', '調整後的中', 'ハンデ調整後順位');
   }
   
   data.push(headers);
@@ -123,7 +124,7 @@ const createMainSheetData = (
     
     const row: any[] = [
       participant.name,
-      `${participant.rank}段`
+      formatRank(participant.rank)
     ];
     
     // 各射の結果を追加
@@ -139,7 +140,7 @@ const createMainSheetData = (
       record.totalHits,
       20,
       `${(record.hitRate * 100).toFixed(1)}%`,
-      index + 1
+      record.rank
     );
     
     if (competition.handicapEnabled) {
