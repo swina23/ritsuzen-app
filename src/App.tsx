@@ -93,7 +93,7 @@ const AppContent: React.FC = () => {
         {renderView()}
       </main>
 
-      {state.competition && (
+      {state.competition && currentView !== 'participants' && (
         <div className="app-actions">
           {state.competition.status !== 'finished' && (
             <button 
