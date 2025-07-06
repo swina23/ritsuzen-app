@@ -170,7 +170,7 @@
   transition: all 0.2s;
 }
 
-.create-btn:hover, .add-btn:hover {
+.create-btn:hover:not(:disabled), .add-btn:hover:not(:disabled) {
   background-color: #1976d2;
 }
 
@@ -292,8 +292,14 @@
   font-size: 12px;
 }
 
-.remove-btn:hover {
+.remove-btn:hover:not(:disabled) {
   background-color: #da190b;
+}
+
+.remove-btn:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 /* Score Input */
