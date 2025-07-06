@@ -14,7 +14,7 @@ const AppContent: React.FC = () => {
   const [currentView, setCurrentView] = useState<AppView>('setup');
 
   const renderView = () => {
-    if (!state.competition) {
+    if (!state.competition && currentView !== 'data') {
       return <CompetitionSetup />;
     }
 
