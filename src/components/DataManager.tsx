@@ -198,7 +198,7 @@ const DataManager: React.FC = () => {
           🗑️ 全データ削除
         </button>
         <p className="description">
-          全ての保存されたデータを削除します。この操作は取り消せません。
+          ローカルに保存された全てのデータを削除します。この操作は取り消せません。
         </p>
       </div>
     </div>
