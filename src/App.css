@@ -622,6 +622,13 @@
 }
 
 /* Data Manager */
+.data-manager {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+
 .data-manager h2 {
   color: #2c3e50;
   margin-bottom: 30px;
@@ -679,6 +686,9 @@
   display: flex;
   gap: 10px;
   margin-bottom: 15px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .export-btn, .import-btn {
@@ -864,6 +874,8 @@
   
   .export-btn, .import-btn, .danger-btn {
     width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
   }
   
   .info-grid {
