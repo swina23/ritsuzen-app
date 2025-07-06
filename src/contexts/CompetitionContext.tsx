@@ -202,7 +202,7 @@ export const CompetitionProvider: React.FC<{ children: ReactNode }> = ({ childre
   };
 
   const resetCompetition = () => {
-    if (window.confirm('現在の大会をリセットしますか？（過去の履歴は保持されます）')) {
+    if (window.confirm('🔄 現在の大会をリセットしますか？\n\n・現在の大会データが削除されます\n・過去の大会履歴は保持されます\n・大会設定画面に戻ります')) {
       // リセット時にLocalStorageもクリア
       saveCurrentCompetition(null);
       dispatch({ type: 'RESET_COMPETITION' });
