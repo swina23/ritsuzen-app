@@ -11,6 +11,11 @@ const ScoreInput: React.FC = () => {
   }
 
   const handleShotClick = (participantId: string, roundNumber: number, shotIndex: number) => {
+    // 大会終了後は記録編集を無効化
+    if (state.competition?.status === 'finished') {
+      return;
+    }
+    
     const record = state.competition?.records.find(r => r.participantId === participantId);
     if (record) {
       const currentHit = record.rounds[roundNumber - 1].shots[shotIndex].hit;
@@ -20,9 +25,17 @@ const ScoreInput: React.FC = () => {
 
   const getShotDisplay = (hit: boolean) => hit ? '○' : '×';
 
+  const isFinished = state.competition?.status === 'finished';
+
   return (
     <div className="score-input">
       <h2>記録入力</h2>
+      
+      {isFinished && (
+        <div className="finished-notice">
+          <p>⚠️ 大会は終了しています。記録の編集はできません。</p>
+        </div>
+      )}
       
       <div className="round-selector">
         <label>立選択:</label>
@@ -65,8 +78,9 @@ const ScoreInput: React.FC = () => {
                   {[0, 1, 2, 3].map(shotIndex => (
                     <td key={shotIndex}>
                       <button
-                        className={`shot-btn ${round?.shots[shotIndex].hit ? 'hit' : 'miss'}`}
+                        className={`shot-btn ${round?.shots[shotIndex].hit ? 'hit' : 'miss'} ${isFinished ? 'disabled' : ''}`}
                         onClick={() => handleShotClick(participant.id, selectedRound, shotIndex)}
+                        disabled={isFinished}
                       >
                         {getShotDisplay(round?.shots[shotIndex].hit || false)}
                       </button>
