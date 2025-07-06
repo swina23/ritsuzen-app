@@ -39,7 +39,7 @@ export const exportAllData = (): void => {
     
     const link = document.createElement('a');
     link.href = url;
-    link.download = `ritsuzen-backup-${new Date().toISOString().split('T')[0]}.json`;
+    link.download = `ritsuzen-all-data-${new Date().toISOString().split('T')[0]}.json`;
     link.style.display = 'none';
     
     document.body.appendChild(link);
