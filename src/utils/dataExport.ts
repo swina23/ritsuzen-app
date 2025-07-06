@@ -4,11 +4,15 @@ import { StorageData, getCompetitionHistory } from './localStorage';
 export interface ExportData {
   version: string;
   exportDate: string;
-  currentCompetition: Competition | null;
-  competitions: Competition[];
+  currentCompetition?: Competition | null;
+  competitions?: Competition[];
+  competition?: Competition; // 個別大会データ用
   metadata: {
-    totalCompetitions: number;
-    appVersion: string;
+    totalCompetitions?: number;
+    appVersion?: string;
+    competitionName?: string;
+    competitionDate?: string;
+    participantCount?: number;
   };
 }
 
@@ -117,16 +121,27 @@ export const importData = (file: File): Promise<ExportData> => {
 const validateImportData = (data: any): data is ExportData => {
   if (!data || typeof data !== 'object') return false;
   if (!data.version || !data.exportDate) return false;
-  if (!Array.isArray(data.competitions)) return false;
   
-  // 大会データの基本検証
-  for (const competition of data.competitions) {
+  // 全データ形式の場合
+  if (Array.isArray(data.competitions)) {
+    for (const competition of data.competitions) {
+      if (!competition.id || !competition.name || !competition.date) return false;
+      if (!['20', '50'].includes(competition.type)) return false;
+      if (!['created', 'inProgress', 'finished'].includes(competition.status)) return false;
+    }
+    return true;
+  }
+  
+  // 個別大会データ形式の場合
+  if (data.competition) {
+    const competition = data.competition;
     if (!competition.id || !competition.name || !competition.date) return false;
     if (!['20', '50'].includes(competition.type)) return false;
     if (!['created', 'inProgress', 'finished'].includes(competition.status)) return false;
+    return true;
   }
   
-  return true;
+  return false;
 };
 
 // CSVフォーマットでの大会結果エクスポート

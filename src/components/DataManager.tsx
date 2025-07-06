@@ -47,17 +47,31 @@ const DataManager: React.FC = () => {
     try {
       const importedData: ExportData = await importData(file);
       
-      // 現在の大会をセット
-      if (importedData.currentCompetition) {
-        saveCurrentCompetition(importedData.currentCompetition);
+      // 全データ形式の場合
+      if (importedData.competitions) {
+        // 現在の大会をセット
+        if (importedData.currentCompetition) {
+          saveCurrentCompetition(importedData.currentCompetition);
+        }
+        
+        // 履歴をセット
+        for (const competition of importedData.competitions) {
+          saveCompetitionToHistory(competition);
+        }
+        
+        setImportStatus(`✅ ${importedData.competitions.length}件の大会データを読み込みました`);
       }
-      
-      // 履歴をセット
-      for (const competition of importedData.competitions) {
-        saveCompetitionToHistory(competition);
+      // 個別大会データ形式の場合
+      else if (importedData.competition) {
+        saveCompetitionToHistory(importedData.competition);
+        
+        // 進行中の大会の場合は現在の大会としてもセット
+        if (importedData.competition.status !== 'finished') {
+          saveCurrentCompetition(importedData.competition);
+        }
+        
+        setImportStatus(`✅ 大会「${importedData.competition.name}」を読み込みました`);
       }
-      
-      setImportStatus(`✅ ${importedData.competitions.length}件の大会データを読み込みました`);
       
       // ページリロードで反映
       setTimeout(() => {
