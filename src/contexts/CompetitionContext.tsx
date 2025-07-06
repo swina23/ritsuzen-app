@@ -277,16 +277,18 @@ export const CompetitionProvider: React.FC<{ children: ReactNode }> = ({ childre
   };
 
   const finishCompetition = () => {
-    if (state.competition) {
-      // 大会終了時に履歴に保存
-      const finishedCompetition = {
-        ...state.competition,
-        status: 'finished' as const,
-        updatedAt: new Date().toISOString()
-      };
-      saveCompetitionToHistory(finishedCompetition);
+    if (window.confirm('🏁 大会を終了しますか？\n\n・記録の編集ができなくなります\n・参加者の追加・変更ができなくなります\n・大会履歴に保存されます\n\n※終了後は変更できません')) {
+      if (state.competition) {
+        // 大会終了時に履歴に保存
+        const finishedCompetition = {
+          ...state.competition,
+          status: 'finished' as const,
+          updatedAt: new Date().toISOString()
+        };
+        saveCompetitionToHistory(finishedCompetition);
+      }
+      dispatch({ type: 'FINISH_COMPETITION' });
     }
-    dispatch({ type: 'FINISH_COMPETITION' });
   };
 
   const resetCompetition = () => {
