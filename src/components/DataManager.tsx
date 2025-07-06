@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useCompetition } from '../contexts/CompetitionContext';
 import { exportAllData, exportCompetition, importData, ExportData } from '../utils/dataExport';
+import { exportToExcel, exportToCSV } from '../utils/excelExport';
 import { getCompetitionHistory, clearAllData, getStorageInfo, saveCurrentCompetition, saveCompetitionToHistory } from '../utils/localStorage';
 
 const DataManager: React.FC = () => {
@@ -99,6 +100,36 @@ const DataManager: React.FC = () => {
     }
   };
 
+  const handleExportHistoryExcel = (competition: any) => {
+    try {
+      exportToExcel({
+        competition,
+        participants: competition.participants,
+        records: competition.records
+      });
+      setImportStatus(`✅ ${competition.name}をExcel出力しました`);
+      setTimeout(() => setImportStatus(''), 3000);
+    } catch (error) {
+      setImportStatus('❌ Excel出力に失敗しました');
+      setTimeout(() => setImportStatus(''), 3000);
+    }
+  };
+
+  const handleExportHistoryCSV = (competition: any) => {
+    try {
+      exportToCSV({
+        competition,
+        participants: competition.participants,
+        records: competition.records
+      });
+      setImportStatus(`✅ ${competition.name}をCSV出力しました`);
+      setTimeout(() => setImportStatus(''), 3000);
+    } catch (error) {
+      setImportStatus('❌ CSV出力に失敗しました');
+      setTimeout(() => setImportStatus(''), 3000);
+    }
+  };
+
   return (
     <div className="data-manager">
       <h2>データ管理</h2>
@@ -174,14 +205,32 @@ const DataManager: React.FC = () => {
             {competitionHistory.slice(0, 10).map((competition) => (
               <div key={competition.id} className="history-item">
                 <div className="competition-info">
-                  <strong>{competition.name}</strong>
-                  <span className="date">{competition.date}</span>
-                  <span className="participants">{competition.participants.length}名参加</span>
-                  <span className={`status ${competition.status}`}>
-                    {competition.status === 'finished' && '完了'}
-                    {competition.status === 'inProgress' && '進行中'}
-                    {competition.status === 'created' && '作成済み'}
-                  </span>
+                  <div className="competition-details">
+                    <strong>{competition.name}</strong>
+                    <span className="date">{competition.date}</span>
+                    <span className="participants">{competition.participants.length}名参加</span>
+                    <span className={`status ${competition.status}`}>
+                      {competition.status === 'finished' && '完了'}
+                      {competition.status === 'inProgress' && '進行中'}
+                      {competition.status === 'created' && '作成済み'}
+                    </span>
+                  </div>
+                  <div className="history-actions">
+                    <button 
+                      onClick={() => handleExportHistoryExcel(competition)}
+                      className="history-export-btn excel-btn"
+                      title="Excel出力"
+                    >
+                      📊 Excel
+                    </button>
+                    <button 
+                      onClick={() => handleExportHistoryCSV(competition)}
+                      className="history-export-btn csv-btn"
+                      title="CSV出力"
+                    >
+                      📋 CSV
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}

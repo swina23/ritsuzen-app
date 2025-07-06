@@ -674,9 +674,52 @@
 
 .competition-info {
   display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+}
+
+.competition-details {
+  display: flex;
   gap: 15px;
   align-items: center;
   flex-wrap: wrap;
+  flex: 1;
+}
+
+.history-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.history-export-btn {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: bold;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.history-export-btn.excel-btn {
+  background-color: #217346;
+  color: white;
+}
+
+.history-export-btn.excel-btn:hover {
+  background-color: #185c37;
+}
+
+.history-export-btn.csv-btn {
+  background-color: #ff6b35;
+  color: white;
+}
+
+.history-export-btn.csv-btn:hover {
+  background-color: #e55a2b;
 }
 
 .competition-info strong {
@@ -747,6 +790,17 @@
   .competition-info {
     flex-direction: column;
     align-items: flex-start;
+    gap: 10px;
+  }
+  
+  .competition-details {
+    flex-direction: column;
+    align-items: flex-start;
     gap: 5px;
+  }
+  
+  .history-actions {
+    width: 100%;
+    justify-content: flex-end;
   }
 }
