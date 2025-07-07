@@ -79,18 +79,21 @@ const ParticipantSetup: React.FC = () => {
     setSelectedMasters(newSelected);
   };
 
-  const handleAddSelectedMasters = () => {
+  const handleAddSelectedMasters = async () => {
     if (state.competition?.status === 'finished') {
       return;
     }
     
-    selectedMasters.forEach(masterId => {
+    // 順次処理で確実に異なるタイムスタンプを生成
+    for (const masterId of selectedMasters) {
       const master = masters.find(m => m.id === masterId);
       if (master) {
         addParticipant({ name: master.name, rank: master.rank });
         incrementMasterUsage(masterId);
+        // 少し待機してタイムスタンプの重複を防ぐ
+        await new Promise(resolve => setTimeout(resolve, 1));
       }
-    });
+    }
     
     setSelectedMasters(new Set());
     // マスターリストを再読み込み（使用回数更新のため）
