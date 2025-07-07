@@ -161,7 +161,7 @@ export const saveParticipantMaster = (master: Omit<ParticipantMaster, 'id' | 'cr
     const existingData = getStorageData();
     const newMaster: ParticipantMaster = {
       ...master,
-      id: Date.now().toString(),
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       createdAt: new Date().toISOString()
     };
     
