@@ -60,9 +60,16 @@ const competitionReducer = (state: CompetitionState, action: CompetitionAction):
       if (!state.competition) return state;
       
       const nextOrder = Math.max(0, ...state.competition.participants.map(p => p.order || 0)) + 1;
+      // 一意のIDを生成
+      const timestamp = Date.now();
+      const random1 = Math.random().toString(36).substr(2, 9);
+      const random2 = Math.random().toString(36).substr(2, 9);
+      const counter = Math.floor(Math.random() * 1000000);
+      const generatedId = `${timestamp}-${random1}-${random2}-${counter}`;
+      
       const participant: Participant = {
         ...action.payload,
-        id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        id: generatedId,
         order: nextOrder
       };
       

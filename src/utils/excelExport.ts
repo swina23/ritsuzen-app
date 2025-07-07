@@ -103,8 +103,6 @@ const createMainSheetData = (
     '的中', '矢数', '的中率', '調整前順位'
   ];
   
-  // デバッグ用ログ
-  console.log('Excel headers:', headers);
   
   if (competition.handicapEnabled) {
     headers.push('ハンデ', '調整後的中', 'ハンデ調整後順位');
