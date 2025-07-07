@@ -275,7 +275,7 @@ const DataManager: React.FC = () => {
             />
           </label>
           <label className="import-btn master-btn">
-            👥 マスター読み込み
+            👥 参加者マスターを読み込み
             <input
               ref={masterFileInputRef}
               type="file"
