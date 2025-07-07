@@ -39,7 +39,7 @@ const competitionReducer = (state: CompetitionState, action: CompetitionAction):
     case 'CREATE_COMPETITION': {
       const { name, date, handicapEnabled } = action.payload;
       const competition: Competition = {
-        id: Date.now().toString(),
+        id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         name,
         date,
         type: '20',
@@ -62,7 +62,7 @@ const competitionReducer = (state: CompetitionState, action: CompetitionAction):
       const nextOrder = Math.max(0, ...state.competition.participants.map(p => p.order || 0)) + 1;
       const participant: Participant = {
         ...action.payload,
-        id: Date.now().toString(),
+        id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         order: nextOrder
       };
       
