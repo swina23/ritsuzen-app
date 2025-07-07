@@ -2,14 +2,45 @@ import React, { useState, useRef } from 'react';
 import { useCompetition } from '../contexts/CompetitionContext';
 import { exportAllData, exportCompetition, importData, ExportData } from '../utils/dataExport';
 import { exportToExcel, exportToCSV } from '../utils/excelExport';
-import { getCompetitionHistory, clearAllData, getStorageInfo, saveCurrentCompetition, saveCompetitionToHistory } from '../utils/localStorage';
+import { 
+  getCompetitionHistory, 
+  clearAllData, 
+  getStorageInfo, 
+  saveCurrentCompetition, 
+  saveCompetitionToHistory,
+  getAllParticipantMasters,
+  exportParticipantMasters,
+  importParticipantMasters,
+  deleteParticipantMaster,
+  updateParticipantMaster
+} from '../utils/localStorage';
+import { ParticipantMaster, Competition } from '../types';
+import { formatRank } from '../utils/formatters';
 
 const DataManager: React.FC = () => {
   const { state } = useCompetition();
   const [importStatus, setImportStatus] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const masterFileInputRef = useRef<HTMLInputElement>(null);
+  const [masters, setMasters] = useState<ParticipantMaster[]>([]);
+  const [showMasters, setShowMasters] = useState(false);
   const storageInfo = getStorageInfo();
   const competitionHistory = getCompetitionHistory();
+  
+  // マスター一覧を読み込み
+  const loadMasters = () => {
+    const masterList = getAllParticipantMasters();
+    setMasters(masterList.sort((a, b) => {
+      if (a.usageCount !== b.usageCount) {
+        return b.usageCount - a.usageCount;
+      }
+      return new Date(b.lastUsed).getTime() - new Date(a.lastUsed).getTime();
+    }));
+  };
+  
+  React.useEffect(() => {
+    loadMasters();
+  }, []);
 
   const handleExportAll = () => {
     try {
@@ -90,8 +121,64 @@ const DataManager: React.FC = () => {
     }
   };
 
+  const handleExportMasters = () => {
+    try {
+      exportParticipantMasters();
+      setImportStatus('✅ 参加者マスターを出力しました');
+      setTimeout(() => setImportStatus(''), 3000);
+    } catch (error) {
+      setImportStatus('❌ マスター出力に失敗しました');
+      setTimeout(() => setImportStatus(''), 3000);
+    }
+  };
+
+  const handleImportMasters = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setImportStatus('📥 マスターデータを読み込み中...');
+
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      const importedCount = importParticipantMasters(data);
+      
+      if (importedCount > 0) {
+        setImportStatus(`✅ ${importedCount}名の参加者マスターを読み込みました`);
+        loadMasters(); // リストを更新
+      } else {
+        setImportStatus('ℹ️ 新規参加者はありませんでした（重複を除外）');
+      }
+      
+      setTimeout(() => setImportStatus(''), 3000);
+    } catch (error) {
+      setImportStatus('❌ マスターファイルの読み込みに失敗しました');
+      setTimeout(() => setImportStatus(''), 3000);
+    }
+
+    if (masterFileInputRef.current) {
+      masterFileInputRef.current.value = '';
+    }
+  };
+
+  const handleDeleteMaster = (masterId: string, masterName: string) => {
+    if (window.confirm(`「${masterName}」を削除しますか？\n\nこの操作は取り消せません。`)) {
+      deleteParticipantMaster(masterId);
+      loadMasters();
+      setImportStatus(`✅ 「${masterName}」を削除しました`);
+      setTimeout(() => setImportStatus(''), 3000);
+    }
+  };
+
+  const handleToggleMasterActive = (masterId: string, currentActive: boolean) => {
+    updateParticipantMaster(masterId, { isActive: !currentActive });
+    loadMasters();
+    setImportStatus(`✅ 参加者を${currentActive ? '無効化' : '有効化'}しました`);
+    setTimeout(() => setImportStatus(''), 3000);
+  };
+
   const handleClearAll = () => {
-    if (window.confirm('🗑️ ローカルに保存された全てのデータを削除しますか？\n\n・現在の大会データが削除されます\n・全ての大会履歴が削除されます\n・この操作は取り消せません\n\n※出力済みのファイルは削除されません')) {
+    if (window.confirm('🗑️ ローカルに保存された全てのデータを削除しますか？\n\n・現在の大会データが削除されます\n・全ての大会履歴が削除されます\n・参加者マスターが削除されます\n・この操作は取り消せません\n\n※出力済みのファイルは削除されません')) {
       clearAllData();
       setImportStatus('✅ 全データを削除しました');
       setTimeout(() => {
@@ -100,7 +187,7 @@ const DataManager: React.FC = () => {
     }
   };
 
-  const handleExportHistoryExcel = (competition: any) => {
+  const handleExportHistoryExcel = (competition: Competition) => {
     try {
       exportToExcel({
         competition,
@@ -115,7 +202,7 @@ const DataManager: React.FC = () => {
     }
   };
 
-  const handleExportHistoryCSV = (competition: any) => {
+  const handleExportHistoryCSV = (competition: Competition) => {
     try {
       exportToCSV({
         competition,
@@ -165,6 +252,9 @@ const DataManager: React.FC = () => {
           >
             📄 現在の大会出力
           </button>
+          <button onClick={handleExportMasters} className="export-btn master-btn">
+            👥 参加者マスター出力
+          </button>
         </div>
         <p className="description">
           JSONファイルとしてダウンロードされます。他の端末でのデータ読み込みに使用できます。
@@ -175,12 +265,22 @@ const DataManager: React.FC = () => {
         <h3>📥 データ読み込み</h3>
         <div className="button-group">
           <label className="import-btn">
-            📁 ファイルを選択
+            📁 大会データ読み込み
             <input
               ref={fileInputRef}
               type="file"
               accept=".json"
               onChange={handleImport}
+              style={{ display: 'none' }}
+            />
+          </label>
+          <label className="import-btn master-btn">
+            👥 マスター読み込み
+            <input
+              ref={masterFileInputRef}
+              type="file"
+              accept=".json"
+              onChange={handleImportMasters}
               style={{ display: 'none' }}
             />
           </label>
@@ -195,6 +295,60 @@ const DataManager: React.FC = () => {
           {importStatus}
         </div>
       )}
+
+      <div className="masters-section">
+        <div className="masters-header">
+          <h3>👥 参加者マスター</h3>
+          <button 
+            onClick={() => setShowMasters(!showMasters)}
+            className="toggle-btn"
+          >
+            {showMasters ? '▼' : '▶'} 管理 ({masters.length}名)
+          </button>
+        </div>
+        
+        {showMasters && (
+          <div className="masters-content">
+            {masters.length === 0 ? (
+              <p>登録された参加者マスターがありません</p>
+            ) : (
+              <div className="masters-list">
+                {masters.map(master => (
+                  <div key={master.id} className={`master-item ${!master.isActive ? 'inactive' : ''}`}>
+                    <div className="master-info">
+                      <div className="master-details">
+                        <strong>{master.name}</strong>
+                        <span className="master-rank">({formatRank(master.rank)})</span>
+                        <span className="master-usage">使用回数: {master.usageCount}</span>
+                        <span className="master-last-used">
+                          最終使用: {new Date(master.lastUsed).toLocaleDateString('ja-JP')}
+                        </span>
+                        {!master.isActive && <span className="inactive-badge">無効</span>}
+                      </div>
+                      <div className="master-actions">
+                        <button
+                          onClick={() => handleToggleMasterActive(master.id, master.isActive)}
+                          className={`toggle-active-btn ${master.isActive ? 'deactivate' : 'activate'}`}
+                          title={master.isActive ? '無効化' : '有効化'}
+                        >
+                          {master.isActive ? '無効化' : '有効化'}
+                        </button>
+                        <button
+                          onClick={() => handleDeleteMaster(master.id, master.name)}
+                          className="delete-btn"
+                          title="削除"
+                        >
+                          削除
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       <div className="history-section">
         <h3>📚 大会履歴</h3>

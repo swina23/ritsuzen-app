@@ -40,6 +40,16 @@ export interface Competition {
   updatedAt: string;
 }
 
+export interface ParticipantMaster {
+  id: string;
+  name: string;
+  rank: number;
+  isActive: boolean;
+  lastUsed: string;
+  usageCount: number;
+  createdAt: string;
+}
+
 export interface CompetitionState {
   competition: Competition | null;
   currentRound: number;

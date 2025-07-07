@@ -654,6 +654,294 @@
   }
 }
 
+/* 参加者マスター機能のスタイル */
+.master-selection {
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 30px;
+}
+
+.master-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.master-header h3 {
+  margin: 0;
+  color: #495057;
+}
+
+.toggle-btn {
+  background: none;
+  border: none;
+  color: #6c757d;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 5px;
+}
+
+.toggle-btn:hover {
+  color: #495057;
+}
+
+.master-content {
+  margin-top: 15px;
+}
+
+.master-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.filter-group label {
+  font-size: 14px;
+  color: #6c757d;
+}
+
+.filter-group select {
+  padding: 5px 10px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.add-selected-btn {
+  background-color: #28a745;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.add-selected-btn:hover:not(:disabled) {
+  background-color: #218838;
+}
+
+.add-selected-btn:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+}
+
+.master-list {
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  background-color: white;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.master-item {
+  border-bottom: 1px solid #dee2e6;
+  padding: 10px 15px;
+}
+
+.master-item:last-child {
+  border-bottom: none;
+}
+
+.master-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  width: 100%;
+}
+
+.master-checkbox input[type="checkbox"] {
+  margin: 0;
+}
+
+.master-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  flex: 1;
+}
+
+.master-name {
+  font-weight: bold;
+  color: #495057;
+}
+
+.master-rank {
+  color: #6c757d;
+  font-size: 14px;
+}
+
+.master-usage {
+  color: #6c757d;
+  font-size: 12px;
+  background-color: #e9ecef;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.new-participant-section {
+  background-color: white;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.new-participant-section h3 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  color: #495057;
+}
+
+/* DataManager のマスター管理スタイル */
+.masters-section {
+  margin: 30px 0;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  background-color: #f8f9fa;
+}
+
+.masters-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  border-bottom: 1px solid #dee2e6;
+  background-color: white;
+  border-radius: 8px 8px 0 0;
+}
+
+.masters-header h3 {
+  margin: 0;
+  color: #495057;
+}
+
+.masters-content {
+  padding: 20px;
+}
+
+.masters-list {
+  background-color: white;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+}
+
+.masters-list .master-item {
+  border-bottom: 1px solid #dee2e6;
+  padding: 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.masters-list .master-item:last-child {
+  border-bottom: none;
+}
+
+.masters-list .master-item.inactive {
+  background-color: #f8f9fa;
+  opacity: 0.7;
+}
+
+.master-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.master-details strong {
+  color: #495057;
+}
+
+.master-details .master-rank {
+  color: #6c757d;
+}
+
+.master-details .master-usage,
+.master-details .master-last-used {
+  font-size: 12px;
+  color: #6c757d;
+  background-color: #e9ecef;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.inactive-badge {
+  background-color: #dc3545;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: bold;
+}
+
+.master-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.toggle-active-btn {
+  padding: 4px 8px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.toggle-active-btn.activate {
+  background-color: #28a745;
+  color: white;
+}
+
+.toggle-active-btn.deactivate {
+  background-color: #ffc107;
+  color: #212529;
+}
+
+.toggle-active-btn:hover {
+  opacity: 0.8;
+}
+
+.delete-btn {
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.delete-btn:hover {
+  background-color: #c82333;
+}
+
+/* エクスポート/インポートボタンのマスター用スタイル */
+.export-btn.master-btn,
+.import-btn.master-btn {
+  background-color: #6f42c1;
+  color: white;
+}
+
+.export-btn.master-btn:hover,
+.import-btn.master-btn:hover {
+  background-color: #5a32a3;
+}
+
 /* Data Manager */
 .data-manager {
   width: 100%;
