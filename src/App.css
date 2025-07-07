@@ -18,6 +18,13 @@
   margin-bottom: 10px;
 }
 
+.app-header h1 .version {
+  font-size: 0.6em;
+  color: #7f8c8d;
+  font-weight: normal;
+  margin-left: 8px;
+}
+
 .competition-status {
   display: flex;
   justify-content: center;

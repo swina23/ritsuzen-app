@@ -7,6 +7,9 @@ import Results from './components/Results';
 import DataManager from './components/DataManager';
 import './App.css';
 
+// package.jsonからバージョンを取得
+const VERSION = '1.0.0';
+
 type AppView = 'setup' | 'participants' | 'scoring' | 'results' | 'data';
 
 const AppContent: React.FC = () => {
@@ -39,7 +42,7 @@ const AppContent: React.FC = () => {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>立禅の会記録アプリ</h1>
+        <h1>立禅の会記録アプリ <span className="version">v{VERSION}</span></h1>
         {state.competition && (
           <div className="competition-status">
             <span>{state.competition.name}</span>
