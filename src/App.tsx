@@ -8,7 +8,7 @@ import DataManager from './components/DataManager';
 import './App.css';
 
 // package.jsonからバージョンを取得
-const VERSION = '1.0.0';
+const VERSION = '1.0.1';
 
 type AppView = 'setup' | 'participants' | 'scoring' | 'results' | 'data';
 
