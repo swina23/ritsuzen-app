@@ -1,4 +1,5 @@
 import * as XLSX from 'xlsx';
+import * as ExcelJS from 'exceljs';
 import { Competition, Participant, ParticipantRecord } from '../types';
 import { formatRank } from './formatters';
 
@@ -7,6 +8,162 @@ export interface ExcelExportData {
   participants: Participant[];
   records: ParticipantRecord[];
 }
+
+export const exportToExcelWithBorders = async (data: ExcelExportData): Promise<void> => {
+  const { competition, participants, records } = data;
+  
+  // ExcelJSワークブックを作成
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet(competition.date.replace(/-/g, ''));
+  
+  // ヘッダー行1: 大会情報
+  worksheet.mergeCells('A1:D1');
+  worksheet.getCell('A1').value = competition.name;
+  worksheet.getCell('A1').font = { bold: true, size: 14 };
+  worksheet.getCell('A1').alignment = { horizontal: 'center' };
+  
+  worksheet.getCell('B1').value = `開催日: ${competition.date}`;
+  worksheet.getCell('C1').value = `参加者数: ${participants.length}名`;
+  worksheet.getCell('D1').value = competition.handicapEnabled ? 'ハンデ有効' : 'ハンデ無効';
+  
+  // 空行
+  worksheet.addRow([]);
+  
+  // ヘッダー行: 列タイトル
+  const headers = [
+    '参加者', '段位',
+    '1立目', '', '', '', '1計',
+    '2立目', '', '', '', '2計',
+    '3立目', '', '', '', '3計',
+    '4立目', '', '', '', '4計',
+    '5立目', '', '', '', '5計',
+    '的中', '矢数', '的中率', '調整前順位'
+  ];
+  
+  if (competition.handicapEnabled) {
+    headers.push('ハンデ', '調整後的中', 'ハンデ調整後順位');
+  }
+  
+  const headerRow = worksheet.addRow(headers);
+  
+  // ヘッダー行のスタイル
+  headerRow.eachCell((cell) => {
+    cell.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE6E6E6' }
+    };
+    cell.font = { bold: true };
+    cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    cell.border = {
+      top: { style: 'thin' },
+      left: { style: 'thin' },
+      bottom: { style: 'thin' },
+      right: { style: 'thin' }
+    };
+  });
+  
+  // 立目ヘッダーのセル結合と左寄せ設定
+  const headerRowNumber = headerRow.number;
+  
+  // 1立目 (C3:F3)
+  worksheet.mergeCells(`C${headerRowNumber}:F${headerRowNumber}`);
+  worksheet.getCell(`C${headerRowNumber}`).alignment = { horizontal: 'left', vertical: 'middle' };
+  
+  // 2立目 (H3:K3)
+  worksheet.mergeCells(`H${headerRowNumber}:K${headerRowNumber}`);
+  worksheet.getCell(`H${headerRowNumber}`).alignment = { horizontal: 'left', vertical: 'middle' };
+  
+  // 3立目 (M3:P3)
+  worksheet.mergeCells(`M${headerRowNumber}:P${headerRowNumber}`);
+  worksheet.getCell(`M${headerRowNumber}`).alignment = { horizontal: 'left', vertical: 'middle' };
+  
+  // 4立目 (R3:U3)
+  worksheet.mergeCells(`R${headerRowNumber}:U${headerRowNumber}`);
+  worksheet.getCell(`R${headerRowNumber}`).alignment = { horizontal: 'left', vertical: 'middle' };
+  
+  // 5立目 (W3:Z3)
+  worksheet.mergeCells(`W${headerRowNumber}:Z${headerRowNumber}`);
+  worksheet.getCell(`W${headerRowNumber}`).alignment = { horizontal: 'left', vertical: 'middle' };
+  
+  // 参加者データを順位順にソート
+  const sortedRecords = [...records].sort((a, b) => {
+    if (competition.handicapEnabled) {
+      return b.adjustedScore - a.adjustedScore;
+    }
+    return b.totalHits - a.totalHits;
+  });
+  
+  // 各参加者のデータ行
+  sortedRecords.forEach((record) => {
+    const participant = participants.find(p => p.id === record.participantId);
+    if (!participant) return;
+    
+    const row: (string | number)[] = [
+      participant.name,
+      formatRank(participant.rank)
+    ];
+    
+    // 各射の結果を追加
+    record.rounds.forEach((round) => {
+      round.shots.forEach(shot => {
+        row.push(shot.hit ? '○' : '×');
+      });
+      row.push(round.hits);
+    });
+    
+    // 総合成績
+    row.push(
+      record.totalHits,
+      20,
+      `${(record.hitRate * 100).toFixed(1)}%`,
+      record.rank
+    );
+    
+    if (competition.handicapEnabled) {
+      row.push(
+        record.handicap,
+        record.adjustedScore,
+        record.rankWithHandicap
+      );
+    }
+    
+    const dataRow = worksheet.addRow(row);
+    
+    // データ行のスタイル
+    dataRow.eachCell((cell) => {
+      cell.border = {
+        top: { style: 'thin' },
+        left: { style: 'thin' },
+        bottom: { style: 'thin' },
+        right: { style: 'thin' }
+      };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    });
+  });
+  
+  // 列幅の設定
+  const colWidths = [12, 6, 4, 4, 4, 4, 6, 4, 4, 4, 4, 6, 4, 4, 4, 4, 6, 4, 4, 4, 4, 6, 4, 4, 4, 4, 6, 8, 6, 8, 10];
+  
+  if (competition.handicapEnabled) {
+    colWidths.push(8, 12, 16);  // ハンデ: 8, 調整後的中: 12, ハンデ調整後順位: 16
+  }
+  
+  // 個別に列幅を設定
+  colWidths.forEach((width, index) => {
+    worksheet.getColumn(index + 1).width = width;
+  });
+  
+  // ファイルを書き込み
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `立禅の会${competition.date.replace(/-/g, '')}.xlsx`;
+  link.click();
+  URL.revokeObjectURL(url);
+};
 
 export const exportToExcel = (data: ExcelExportData): void => {
   const { competition, participants, records } = data;
@@ -63,6 +220,9 @@ export const exportToExcel = (data: ExcelExportData): void => {
   
   mainSheet['!cols'] = colWidths;
   
+  // 罫線を追加
+  addBordersToSheet(mainSheet, mainSheetData.length, colWidths.length);
+  
   // シートを追加
   const sheetName = competition.date.replace(/-/g, '');
   XLSX.utils.book_append_sheet(workbook, mainSheet, sheetName);
@@ -70,16 +230,20 @@ export const exportToExcel = (data: ExcelExportData): void => {
   // ファイル名を生成
   const fileName = `立禅の会${competition.date.replace(/-/g, '')}.xlsx`;
   
-  // ファイルをダウンロード
-  XLSX.writeFile(workbook, fileName);
+  // ファイルをダウンロード（スタイル情報を含める）
+  XLSX.writeFile(workbook, fileName, {
+    bookSST: false,
+    bookType: 'xlsx',
+    cellStyles: true
+  });
 };
 
 const createMainSheetData = (
   competition: Competition,
   participants: Participant[],
   records: ParticipantRecord[]
-): any[][] => {
-  const data: any[][] = [];
+): (string | number)[][] => {
+  const data: (string | number)[][] = [];
   
   // ヘッダー行1: 大会情報
   data.push([
@@ -119,17 +283,17 @@ const createMainSheetData = (
   });
   
   // 各参加者のデータ行
-  sortedRecords.forEach((record, _index) => {
+  sortedRecords.forEach((record) => {
     const participant = participants.find(p => p.id === record.participantId);
     if (!participant) return;
     
-    const row: any[] = [
+    const row: (string | number)[] = [
       participant.name,
       formatRank(participant.rank)
     ];
     
     // 各射の結果を追加
-    record.rounds.forEach((round, _roundIndex) => {
+    record.rounds.forEach((round) => {
       round.shots.forEach(shot => {
         row.push(shot.hit ? '○' : '×');
       });
@@ -156,6 +320,60 @@ const createMainSheetData = (
   });
   
   return data;
+};
+
+// 罫線を追加する関数
+const addBordersToSheet = (sheet: XLSX.WorkSheet, numRows: number, numCols: number): void => {
+  const borderStyle = {
+    style: 'thin',
+    color: { rgb: '000000' }
+  };
+  
+  const border = {
+    top: borderStyle,
+    bottom: borderStyle,
+    left: borderStyle,
+    right: borderStyle
+  };
+  
+  // 範囲を設定
+  const range = { s: { c: 0, r: 0 }, e: { c: numCols - 1, r: numRows - 1 } };
+  sheet['!ref'] = XLSX.utils.encode_range(range);
+  
+  // 全てのセルに罫線を適用
+  for (let row = 0; row < numRows; row++) {
+    for (let col = 0; col < numCols; col++) {
+      const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
+      
+      // セルが存在しない場合は作成
+      if (!sheet[cellAddress]) {
+        sheet[cellAddress] = { t: 's', v: '' };
+      }
+      
+      // セルスタイルを設定
+      if (!sheet[cellAddress].s) {
+        sheet[cellAddress].s = {};
+      }
+      
+      // 罫線を追加
+      sheet[cellAddress].s.border = border;
+      
+      // ヘッダー行（3行目）に背景色を追加
+      if (row === 2) {
+        sheet[cellAddress].s.fill = {
+          fgColor: { rgb: 'E6E6E6' }
+        };
+        sheet[cellAddress].s.font = {
+          bold: true
+        };
+        // 中央揃え
+        sheet[cellAddress].s.alignment = {
+          horizontal: 'center',
+          vertical: 'center'
+        };
+      }
+    }
+  }
 };
 
 // 簡易版のCSV出力（Excel出力の代替）

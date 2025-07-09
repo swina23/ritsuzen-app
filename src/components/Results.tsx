@@ -1,6 +1,6 @@
 import React from 'react';
 import { useCompetition } from '../contexts/CompetitionContext';
-import { exportToExcel, exportToCSV } from '../utils/excelExport';
+import { exportToExcel, exportToExcelWithBorders, exportToCSV } from '../utils/excelExport';
 import { formatRank } from '../utils/formatters';
 
 const Results: React.FC = () => {
@@ -24,9 +24,9 @@ const Results: React.FC = () => {
     return record.rank;
   };
 
-  const handleExcelExport = () => {
+  const handleExcelExport = async () => {
     if (state.competition) {
-      exportToExcel({
+      await exportToExcelWithBorders({
         competition: state.competition,
         participants: state.competition.participants,
         records: state.competition.records

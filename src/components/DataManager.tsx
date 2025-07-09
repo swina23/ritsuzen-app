@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useCompetition } from '../contexts/CompetitionContext';
 import { exportAllData, exportCompetition, importData, ExportData } from '../utils/dataExport';
-import { exportToExcel, exportToCSV } from '../utils/excelExport';
+import { exportToExcel, exportToExcelWithBorders, exportToCSV } from '../utils/excelExport';
 import { 
   getCompetitionHistory, 
   clearAllData, 
@@ -187,9 +187,9 @@ const DataManager: React.FC = () => {
     }
   };
 
-  const handleExportHistoryExcel = (competition: Competition) => {
+  const handleExportHistoryExcel = async (competition: Competition) => {
     try {
-      exportToExcel({
+      await exportToExcelWithBorders({
         competition,
         participants: competition.participants,
         records: competition.records
