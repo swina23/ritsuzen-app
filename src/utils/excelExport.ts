@@ -155,6 +155,89 @@ export const exportToExcelWithBorders = async (data: ExcelExportData): Promise<v
   colWidths.forEach((width, index) => {
     worksheet.getColumn(index + 1).width = width;
   });
+
+  // 罫線の強化設定
+  const lastRow = worksheet.lastRow?.number || 0;
+  const lastCol = colWidths.length;
+  
+  // 1. 表全体の外枠を太線にする
+  if (lastRow > 0) {
+    // 上辺
+    for (let col = 1; col <= lastCol; col++) {
+      const cell = worksheet.getCell(headerRowNumber, col);
+      cell.border = {
+        ...cell.border,
+        top: { style: 'thick' }
+      };
+    }
+    
+    // 下辺
+    for (let col = 1; col <= lastCol; col++) {
+      const cell = worksheet.getCell(lastRow, col);
+      cell.border = {
+        ...cell.border,
+        bottom: { style: 'thick' }
+      };
+    }
+    
+    // 左辺
+    for (let row = headerRowNumber; row <= lastRow; row++) {
+      const cell = worksheet.getCell(row, 1);
+      cell.border = {
+        ...cell.border,
+        left: { style: 'thick' }
+      };
+    }
+    
+    // 右辺
+    for (let row = headerRowNumber; row <= lastRow; row++) {
+      const cell = worksheet.getCell(row, lastCol);
+      cell.border = {
+        ...cell.border,
+        right: { style: 'thick' }
+      };
+    }
+  }
+  
+  // 2. タイトル行の外枠を太線にする
+  for (let col = 1; col <= lastCol; col++) {
+    const cell = worksheet.getCell(headerRowNumber, col);
+    cell.border = {
+      ...cell.border,
+      top: { style: 'thick' },
+      bottom: { style: 'thick' }
+    };
+  }
+  
+  // 3. 各立目のグループを太線で囲む
+  const groups = [
+    { start: 1, end: 2 },   // 参加者+段位 (A-B)
+    { start: 3, end: 7 },   // 1立目+1計 (C-G)
+    { start: 8, end: 12 },  // 2立目+2計 (H-L)
+    { start: 13, end: 17 }, // 3立目+3計 (M-Q)
+    { start: 18, end: 22 }, // 4立目+4計 (R-V)
+    { start: 23, end: 27 }, // 5立目+5計 (W-AA)
+    { start: 28, end: lastCol } // 総合成績 (AB以降)
+  ];
+  
+  groups.forEach(group => {
+    // 各グループの縦線を太線にする
+    for (let row = headerRowNumber; row <= lastRow; row++) {
+      // 左辺
+      const leftCell = worksheet.getCell(row, group.start);
+      leftCell.border = {
+        ...leftCell.border,
+        left: { style: 'thick' }
+      };
+      
+      // 右辺
+      const rightCell = worksheet.getCell(row, group.end);
+      rightCell.border = {
+        ...rightCell.border,
+        right: { style: 'thick' }
+      };
+    }
+  });
   
   // ファイルを書き込み
   const buffer = await workbook.xlsx.writeBuffer();
