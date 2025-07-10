@@ -6,13 +6,14 @@ const CompetitionSetup: React.FC = () => {
   const [name, setName] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [handicapEnabled, setHandicapEnabled] = useState(true);
+  const [roundsCount, setRoundsCount] = useState(5);
 
   const hasActiveCompetition = state.competition !== null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!hasActiveCompetition) {
-      createCompetition(name, date, handicapEnabled);
+      createCompetition(name, date, handicapEnabled, roundsCount);
     }
   };
 
@@ -52,6 +53,22 @@ const CompetitionSetup: React.FC = () => {
             required
             disabled={hasActiveCompetition}
           />
+        </div>
+        
+        <div className="form-group">
+          <label htmlFor="rounds">立数:</label>
+          <select
+            id="rounds"
+            value={roundsCount}
+            onChange={(e) => setRoundsCount(Number(e.target.value))}
+            disabled={hasActiveCompetition}
+          >
+            <option value={5}>5立 (20射)</option>
+            <option value={10}>10立 (40射)</option>
+            <option value={15}>15立 (60射)</option>
+            <option value={20}>20立 (80射)</option>
+            <option value={25}>25立 (100射)</option>
+          </select>
         </div>
         
         <div className="form-group">

@@ -31,16 +31,15 @@ export const exportToExcelWithBorders = async (data: ExcelExportData): Promise<v
   worksheet.addRow([]);
   worksheet.addRow([]);
   
-  // ヘッダー行: 列タイトル
-  const headers = [
-    '参加者', '段位',
-    '1立目', '', '', '', '1計',
-    '2立目', '', '', '', '2計',
-    '3立目', '', '', '', '3計',
-    '4立目', '', '', '', '4計',
-    '5立目', '', '', '', '5計',
-    '的中', '矢数', '的中率', '調整前順位'
-  ];
+  // ヘッダー行: 列タイトル（動的生成）
+  const headers = ['参加者', '段位'];
+  
+  // 立数に応じて動的にヘッダーを追加
+  for (let i = 1; i <= competition.roundsCount; i++) {
+    headers.push(`${i}立目`, '', '', '', `${i}計`);
+  }
+  
+  headers.push('的中', '矢数', '的中率', '調整前順位');
   
   if (competition.handicapEnabled) {
     headers.push('ハンデ', '調整後的中', 'ハンデ調整後順位');
@@ -65,28 +64,30 @@ export const exportToExcelWithBorders = async (data: ExcelExportData): Promise<v
     };
   });
   
-  // 立目ヘッダーのセル結合と左寄せ設定
+  // 立目ヘッダーのセル結合と左寄せ設定（動的生成）
   const headerRowNumber = headerRow.number;
   
-  // 1立目 (C3:F3)
-  worksheet.mergeCells(`C${headerRowNumber}:F${headerRowNumber}`);
-  worksheet.getCell(`C${headerRowNumber}`).alignment = { horizontal: 'left', vertical: 'middle' };
-  
-  // 2立目 (H3:K3)
-  worksheet.mergeCells(`H${headerRowNumber}:K${headerRowNumber}`);
-  worksheet.getCell(`H${headerRowNumber}`).alignment = { horizontal: 'left', vertical: 'middle' };
-  
-  // 3立目 (M3:P3)
-  worksheet.mergeCells(`M${headerRowNumber}:P${headerRowNumber}`);
-  worksheet.getCell(`M${headerRowNumber}`).alignment = { horizontal: 'left', vertical: 'middle' };
-  
-  // 4立目 (R3:U3)
-  worksheet.mergeCells(`R${headerRowNumber}:U${headerRowNumber}`);
-  worksheet.getCell(`R${headerRowNumber}`).alignment = { horizontal: 'left', vertical: 'middle' };
-  
-  // 5立目 (W3:Z3)
-  worksheet.mergeCells(`W${headerRowNumber}:Z${headerRowNumber}`);
-  worksheet.getCell(`W${headerRowNumber}`).alignment = { horizontal: 'left', vertical: 'middle' };
+  // ExcelJSの列番号を列アドレスに変換するヘルパー関数
+  const getColumnLetter = (colNum: number): string => {
+    let result = '';
+    while (colNum > 0) {
+      colNum--;
+      result = String.fromCharCode(65 + (colNum % 26)) + result;
+      colNum = Math.floor(colNum / 26);
+    }
+    return result;
+  };
+
+  // 動的にセル結合を行う
+  for (let i = 0; i < competition.roundsCount; i++) {
+    const startCol = 3 + (i * 5); // C列(3)から5列ずつ
+    const endCol = startCol + 3;   // 4列分をマージ（立目名の部分）
+    const startColLetter = getColumnLetter(startCol);
+    const endColLetter = getColumnLetter(endCol);
+    
+    worksheet.mergeCells(`${startColLetter}${headerRowNumber}:${endColLetter}${headerRowNumber}`);
+    worksheet.getCell(`${startColLetter}${headerRowNumber}`).alignment = { horizontal: 'left', vertical: 'middle' };
+  }
   
   // 参加者データを順位順にソート
   const sortedRecords = [...records].sort((a, b) => {
@@ -109,15 +110,24 @@ export const exportToExcelWithBorders = async (data: ExcelExportData): Promise<v
     // 各射の結果を追加
     record.rounds.forEach((round) => {
       round.shots.forEach(shot => {
-        row.push(shot.hit ? '○' : '×');
+        if (shot.hit === null) {
+          row.push('-');
+        } else {
+          row.push(shot.hit ? '○' : '×');
+        }
       });
       row.push(round.hits);
     });
     
+    // 実際に射た矢数を計算
+    const actualShotsCount = record.rounds.reduce((sum, round) => {
+      return sum + round.shots.filter(shot => shot.hit !== null).length;
+    }, 0);
+    
     // 総合成績
     row.push(
       record.totalHits,
-      20,
+      actualShotsCount,
       `${(record.hitRate * 100).toFixed(1)}%`,
       record.rank
     );
@@ -144,8 +154,15 @@ export const exportToExcelWithBorders = async (data: ExcelExportData): Promise<v
     });
   });
   
-  // 列幅の設定
-  const colWidths = [12, 6, 4, 4, 4, 4, 6, 4, 4, 4, 4, 6, 4, 4, 4, 4, 6, 4, 4, 4, 4, 6, 4, 4, 4, 4, 6, 8, 6, 8, 10];
+  // 列幅の設定（動的生成）
+  const colWidths = [12, 6]; // 参加者: 12, 段位: 6
+  
+  // 立数に応じて列幅を追加
+  for (let i = 0; i < competition.roundsCount; i++) {
+    colWidths.push(4, 4, 4, 4, 6); // 各射: 4, 立計: 6
+  }
+  
+  colWidths.push(8, 6, 8, 10); // 的中: 8, 矢数: 6, 的中率: 8, 調整前順位: 10
   
   if (competition.handicapEnabled) {
     colWidths.push(8, 12, 16);  // ハンデ: 8, 調整後的中: 12, ハンデ調整後順位: 16
@@ -209,16 +226,21 @@ export const exportToExcelWithBorders = async (data: ExcelExportData): Promise<v
     };
   }
   
-  // 3. 各立目のグループを太線で囲む
+  // 3. 各立目のグループを太線で囲む（動的生成）
   const groups = [
-    { start: 1, end: 2 },   // 参加者+段位 (A-B)
-    { start: 3, end: 7 },   // 1立目+1計 (C-G)
-    { start: 8, end: 12 },  // 2立目+2計 (H-L)
-    { start: 13, end: 17 }, // 3立目+3計 (M-Q)
-    { start: 18, end: 22 }, // 4立目+4計 (R-V)
-    { start: 23, end: 27 }, // 5立目+5計 (W-AA)
-    { start: 28, end: lastCol } // 総合成績 (AB以降)
+    { start: 1, end: 2 } // 参加者+段位 (A-B)
   ];
+  
+  // 立数に応じてグループを追加
+  for (let i = 0; i < competition.roundsCount; i++) {
+    const start = 3 + (i * 5);
+    const end = start + 4; // 5列分（4射+1計）
+    groups.push({ start, end });
+  }
+  
+  // 総合成績グループ
+  const summaryStart = 3 + (competition.roundsCount * 5);
+  groups.push({ start: summaryStart, end: lastCol });
   
   groups.forEach(group => {
     // 各グループの縦線を太線にする
@@ -341,16 +363,15 @@ const createMainSheetData = (
   // 空行
   data.push([]);
   
-  // ヘッダー行2: 列タイトル
-  const headers = [
-    '参加者', '段位',
-    '1立目', '', '', '', '1計',
-    '2立目', '', '', '', '2計',
-    '3立目', '', '', '', '3計',
-    '4立目', '', '', '', '4計',
-    '5立目', '', '', '', '5計',
-    '的中', '矢数', '的中率', '調整前順位'
-  ];
+  // ヘッダー行2: 列タイトル（動的生成）
+  const headers = ['参加者', '段位'];
+  
+  // 立数に応じて動的にヘッダーを追加
+  for (let i = 1; i <= competition.roundsCount; i++) {
+    headers.push(`${i}立目`, '', '', '', `${i}計`);
+  }
+  
+  headers.push('的中', '矢数', '的中率', '調整前順位');
   
   
   if (competition.handicapEnabled) {
@@ -380,15 +401,24 @@ const createMainSheetData = (
     // 各射の結果を追加
     record.rounds.forEach((round) => {
       round.shots.forEach(shot => {
-        row.push(shot.hit ? '○' : '×');
+        if (shot.hit === null) {
+          row.push('-');
+        } else {
+          row.push(shot.hit ? '○' : '×');
+        }
       });
       row.push(round.hits); // 立計
     });
     
+    // 実際に射た矢数を計算
+    const actualShotsCount = record.rounds.reduce((sum, round) => {
+      return sum + round.shots.filter(shot => shot.hit !== null).length;
+    }, 0);
+    
     // 総合成績
     row.push(
       record.totalHits,
-      20,
+      actualShotsCount,
       `${(record.hitRate * 100).toFixed(1)}%`,
       record.rank
     );

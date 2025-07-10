@@ -19,11 +19,28 @@ const ScoreInput: React.FC = () => {
     const record = state.competition?.records.find(r => r.participantId === participantId);
     if (record) {
       const currentHit = record.rounds[roundNumber - 1].shots[shotIndex].hit;
-      updateShot(participantId, roundNumber, shotIndex, !currentHit);
+      // null → false → true → null のサイクル
+      let newHit: boolean | null;
+      if (currentHit === null) {
+        newHit = false; // 未実施 → 外れ
+      } else if (currentHit === false) {
+        newHit = true;  // 外れ → 的中
+      } else {
+        newHit = null;  // 的中 → 未実施
+      }
+      updateShot(participantId, roundNumber, shotIndex, newHit);
     }
   };
 
-  const getShotDisplay = (hit: boolean) => hit ? '○' : '×';
+  const getShotDisplay = (hit: boolean | null | undefined) => {
+    if (hit === null || hit === undefined) return '-';
+    return hit ? '○' : '×';
+  };
+
+  const getShotClass = (hit: boolean | null | undefined) => {
+    if (hit === null || hit === undefined) return 'unshot';
+    return hit ? 'hit' : 'miss';
+  };
 
   const isFinished = state.competition?.status === 'finished';
 
@@ -39,7 +56,7 @@ const ScoreInput: React.FC = () => {
       
       <div className="round-selector">
         <label>立選択:</label>
-        {[1, 2, 3, 4, 5].map(round => (
+        {Array.from({ length: state.competition.roundsCount }, (_, i) => i + 1).map(round => (
           <button
             key={round}
             onClick={() => setSelectedRound(round)}
@@ -56,11 +73,11 @@ const ScoreInput: React.FC = () => {
             <tr>
               <th>参加者</th>
               <th>段位</th>
-              <th>1射</th>
-              <th>2射</th>
-              <th>3射</th>
-              <th>4射</th>
-              <th>立計</th>
+              <th>1射目</th>
+              <th>2射目</th>
+              <th>3射目</th>
+              <th>4射目</th>
+              <th>的中計</th>
               <th>総計</th>
             </tr>
           </thead>
@@ -78,11 +95,11 @@ const ScoreInput: React.FC = () => {
                   {[0, 1, 2, 3].map(shotIndex => (
                     <td key={shotIndex}>
                       <button
-                        className={`shot-btn ${round?.shots[shotIndex].hit ? 'hit' : 'miss'} ${isFinished ? 'disabled' : ''}`}
+                        className={`shot-btn ${getShotClass(round?.shots[shotIndex]?.hit)} ${isFinished ? 'disabled' : ''}`}
                         onClick={() => handleShotClick(participant.id, selectedRound, shotIndex)}
                         disabled={isFinished}
                       >
-                        {getShotDisplay(round?.shots[shotIndex].hit || false)}
+                        {getShotDisplay(round?.shots[shotIndex]?.hit)}
                       </button>
                     </td>
                   ))}

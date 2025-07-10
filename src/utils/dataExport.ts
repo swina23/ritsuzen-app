@@ -148,11 +148,14 @@ const validateImportData = (data: any): data is ExportData => {
 // CSVフォーマットでの大会結果エクスポート
 export const exportCompetitionAsCSV = (competition: Competition): void => {
   try {
-    const headers = [
-      '順位', '参加者名', '段位', 
-      '1立', '2立', '3立', '4立', '5立',
-      '的中', '的中率'
-    ];
+    const headers = ['順位', '参加者名', '段位'];
+    
+    // 立数に応じて動的にヘッダーを追加
+    for (let i = 1; i <= competition.roundsCount; i++) {
+      headers.push(`${i}立`);
+    }
+    
+    headers.push('的中', '的中率');
     
     if (competition.handicapEnabled) {
       headers.push('調整前順位', 'ハンデ', '調整後的中', 'ハンデ調整後順位');

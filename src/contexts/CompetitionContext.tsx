@@ -5,23 +5,23 @@ import { saveCurrentCompetition, loadCurrentCompetition, saveCompetitionToHistor
 
 interface CompetitionContextType {
   state: CompetitionState;
-  createCompetition: (name: string, date: string, handicapEnabled: boolean) => void;
+  createCompetition: (name: string, date: string, handicapEnabled: boolean, roundsCount?: number) => void;
   addParticipant: (participant: Omit<Participant, 'id' | 'order'>) => void;
   removeParticipant: (participantId: string) => void;
   moveParticipantUp: (participantId: string) => void;
   moveParticipantDown: (participantId: string) => void;
-  updateShot: (participantId: string, roundNumber: number, shotIndex: number, hit: boolean) => void;
+  updateShot: (participantId: string, roundNumber: number, shotIndex: number, hit: boolean | null) => void;
   finishCompetition: () => void;
   resetCompetition: () => void;
 }
 
 type CompetitionAction =
-  | { type: 'CREATE_COMPETITION'; payload: { name: string; date: string; handicapEnabled: boolean } }
+  | { type: 'CREATE_COMPETITION'; payload: { name: string; date: string; handicapEnabled: boolean; roundsCount?: number } }
   | { type: 'ADD_PARTICIPANT'; payload: Omit<Participant, 'id' | 'order'> }
   | { type: 'REMOVE_PARTICIPANT'; payload: string }
   | { type: 'MOVE_PARTICIPANT_UP'; payload: string }
   | { type: 'MOVE_PARTICIPANT_DOWN'; payload: string }
-  | { type: 'UPDATE_SHOT'; payload: { participantId: string; roundNumber: number; shotIndex: number; hit: boolean } }
+  | { type: 'UPDATE_SHOT'; payload: { participantId: string; roundNumber: number; shotIndex: number; hit: boolean | null } }
   | { type: 'FINISH_COMPETITION' }
   | { type: 'RESET_COMPETITION' }
   | { type: 'LOAD_COMPETITION'; payload: Competition | null };
@@ -37,7 +37,7 @@ const CompetitionContext = createContext<CompetitionContextType | undefined>(und
 const competitionReducer = (state: CompetitionState, action: CompetitionAction): CompetitionState => {
   switch (action.type) {
     case 'CREATE_COMPETITION': {
-      const { name, date, handicapEnabled } = action.payload;
+      const { name, date, handicapEnabled, roundsCount = 5 } = action.payload;
       const competition: Competition = {
         id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         name,
@@ -45,6 +45,7 @@ const competitionReducer = (state: CompetitionState, action: CompetitionAction):
         type: '20',
         status: 'created',
         handicapEnabled,
+        roundsCount,
         participants: [],
         records: [],
         createdAt: new Date().toISOString(),
@@ -73,7 +74,7 @@ const competitionReducer = (state: CompetitionState, action: CompetitionAction):
         order: nextOrder
       };
       
-      const record = initializeParticipantRecord(participant);
+      const record = initializeParticipantRecord(participant, state.competition.roundsCount);
       
       return {
         ...state,
@@ -231,7 +232,8 @@ const competitionReducer = (state: CompetitionState, action: CompetitionAction):
         ...state,
         competition: {
           ...action.payload,
-          participants: migratedParticipants
+          participants: migratedParticipants,
+          roundsCount: action.payload.roundsCount !== undefined ? action.payload.roundsCount : 5
         }
       };
     }
@@ -259,8 +261,8 @@ export const CompetitionProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
   }, [state.competition]);
 
-  const createCompetition = (name: string, date: string, handicapEnabled: boolean) => {
-    dispatch({ type: 'CREATE_COMPETITION', payload: { name, date, handicapEnabled } });
+  const createCompetition = (name: string, date: string, handicapEnabled: boolean, roundsCount: number = 5) => {
+    dispatch({ type: 'CREATE_COMPETITION', payload: { name, date, handicapEnabled, roundsCount } });
   };
 
   const addParticipant = (participant: Omit<Participant, 'id' | 'order'>) => {
@@ -279,7 +281,7 @@ export const CompetitionProvider: React.FC<{ children: ReactNode }> = ({ childre
     dispatch({ type: 'MOVE_PARTICIPANT_DOWN', payload: participantId });
   };
 
-  const updateShot = (participantId: string, roundNumber: number, shotIndex: number, hit: boolean) => {
+  const updateShot = (participantId: string, roundNumber: number, shotIndex: number, hit: boolean | null) => {
     dispatch({ type: 'UPDATE_SHOT', payload: { participantId, roundNumber, shotIndex, hit } });
   };
 

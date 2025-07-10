@@ -12,8 +12,8 @@ export const calculateHitRate = (totalHits: number, totalShots: number): number 
   return totalShots > 0 ? totalHits / totalShots : 0;
 };
 
-export const calculateRoundHits = (shots: { hit: boolean }[]): number => {
-  return shots.filter(shot => shot.hit).length;
+export const calculateRoundHits = (shots: { hit: boolean | null }[]): number => {
+  return shots.filter(shot => shot.hit === true).length;
 };
 
 export const calculateAdjustedScore = (totalHits: number, handicap: number): number => {
@@ -65,17 +65,16 @@ export const calculateRankings = (records: ParticipantRecord[]): ParticipantReco
   return records;
 };
 
-export const initializeParticipantRecord = (participant: Participant): ParticipantRecord => {
+export const initializeParticipantRecord = (participant: Participant, roundsCount: number = 5): ParticipantRecord => {
   const rounds: Round[] = [];
-  for (let i = 1; i <= 5; i++) {
+  for (let i = 1; i <= roundsCount; i++) {
+    const shots = [];
+    for (let j = 0; j < 4; j++) { // 1立は4射で固定
+      shots.push({ hit: null }); // 初期状態は未実施
+    }
     rounds.push({
       roundNumber: i,
-      shots: [
-        { hit: false },
-        { hit: false },
-        { hit: false },
-        { hit: false }
-      ],
+      shots,
       hits: 0
     });
   }
@@ -93,7 +92,7 @@ export const initializeParticipantRecord = (participant: Participant): Participa
   };
 };
 
-export const updateParticipantRecord = (record: ParticipantRecord): ParticipantRecord => {
+export const updateParticipantRecord = (record: ParticipantRecord, totalShotsCount?: number): ParticipantRecord => {
   // 各立の的中数を再計算
   const updatedRounds = record.rounds.map(round => ({
     ...round,
@@ -101,7 +100,11 @@ export const updateParticipantRecord = (record: ParticipantRecord): ParticipantR
   }));
 
   const totalHits = calculateTotalHits(updatedRounds);
-  const hitRate = calculateHitRate(totalHits, 20); // 20射制
+  // 実際に射た矢数を計算（nullではない矢のみ）
+  const actualShotsCount = totalShotsCount || updatedRounds.reduce((sum, round) => {
+    return sum + round.shots.filter(shot => shot.hit !== null).length;
+  }, 0);
+  const hitRate = calculateHitRate(totalHits, actualShotsCount);
   const adjustedScore = calculateAdjustedScore(totalHits, record.handicap);
 
   return {

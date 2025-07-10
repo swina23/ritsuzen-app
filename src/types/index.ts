@@ -7,7 +7,7 @@ export interface Participant {
 }
 
 export interface Shot {
-  hit: boolean; // true=的中, false=外れ
+  hit: boolean | null; // true=的中, false=外れ, null=未実施
 }
 
 export interface Round {
@@ -34,6 +34,7 @@ export interface Competition {
   type: '20' | '50';
   status: 'created' | 'inProgress' | 'finished';
   handicapEnabled: boolean;
+  roundsCount: number; // 立数 (5, 10, 15, 20, 25)
   participants: Participant[];
   records: ParticipantRecord[];
   createdAt: string;

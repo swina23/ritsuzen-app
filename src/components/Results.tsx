@@ -3,6 +3,17 @@ import { useCompetition } from '../contexts/CompetitionContext';
 import { exportToExcelWithBorders, exportToCSV } from '../utils/excelExport';
 import { formatRank } from '../utils/formatters';
 
+// ショット表示用のヘルパー関数
+const getShotDisplay = (hit: boolean | null | undefined) => {
+  if (hit === null || hit === undefined) return '-';
+  return hit ? '○' : '×';
+};
+
+const getShotClass = (hit: boolean | null | undefined) => {
+  if (hit === null || hit === undefined) return 'unshot';
+  return hit ? 'hit' : 'miss';
+};
+
 const Results: React.FC = () => {
   const { state } = useCompetition();
 
@@ -72,11 +83,9 @@ const Results: React.FC = () => {
               <th>順位</th>
               <th>参加者</th>
               <th>段位</th>
-              <th>1立</th>
-              <th>2立</th>
-              <th>3立</th>
-              <th>4立</th>
-              <th>5立</th>
+              {Array.from({ length: state.competition.roundsCount }, (_, i) => (
+                <th key={i}>{i + 1}立</th>
+              ))}
               <th>的中</th>
               <th>的中率</th>
               {state.competition.handicapEnabled && (
@@ -137,8 +146,8 @@ const Results: React.FC = () => {
                     <div className="round-header">第{round.roundNumber}立</div>
                     <div className="shots">
                       {round.shots.map((shot, shotIndex) => (
-                        <span key={shotIndex} className={`shot ${shot.hit ? 'hit' : 'miss'}`}>
-                          {shot.hit ? '○' : '×'}
+                        <span key={shotIndex} className={`shot ${getShotClass(shot.hit)}`}>
+                          {getShotDisplay(shot.hit)}
                         </span>
                       ))}
                     </div>

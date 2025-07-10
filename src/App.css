@@ -356,6 +356,12 @@
   text-align: center;
   border: 1px solid #ddd;
   color: #2c3e50;
+  vertical-align: middle;
+}
+
+.score-table td {
+  display: table-cell;
+  text-align: center;
 }
 
 .score-table th {
@@ -365,17 +371,18 @@
 }
 
 .shot-btn {
-  width: 40px;
-  height: 40px;
+  width: 32px;
+  height: 32px;
   border: none;
   border-radius: 50%;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: bold;
   cursor: pointer;
   transition: all 0.2s;
   display: flex;
   align-items: center;
   justify-content: center;
+  margin: 0 auto;
 }
 
 .shot-btn.hit {
@@ -386,6 +393,12 @@
 .shot-btn.miss {
   background-color: #f44336;
   color: white;
+}
+
+.shot-btn.unshot {
+  background-color: #e0e0e0;
+  color: #666;
+  border: 2px dashed #999;
 }
 
 .shot-btn:hover {
@@ -645,9 +658,9 @@
   }
   
   .shot-btn {
-    width: 35px;
-    height: 35px;
-    font-size: 16px;
+    width: 28px;
+    height: 28px;
+    font-size: 14px;
   }
   
   .shots-grid {
