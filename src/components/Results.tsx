@@ -3,18 +3,14 @@ import { useCompetition } from '../contexts/CompetitionContext';
 import { exportToExcelWithBorders, exportToCSV } from '../utils/excelExport';
 import { formatRank } from '../utils/formatters';
 import { getShotDisplay, getShotClass } from '../utils/shotHelpers';
+import { sortRecordsByScore } from '../utils/arrayUtils';
 
 const Results: React.FC = () => {
   const { state } = useCompetition();
 
   const sortedRecords = useMemo(() => {
     if (!state.competition) return [];
-    return [...state.competition.records].sort((a, b) => {
-      if (state.competition?.handicapEnabled) {
-        return b.adjustedScore - a.adjustedScore;
-      }
-      return b.totalHits - a.totalHits;
-    });
+    return sortRecordsByScore(state.competition.records, state.competition.handicapEnabled);
   }, [state.competition?.records, state.competition?.handicapEnabled]);
 
   const getDisplayRank = useCallback((record: any): number => {

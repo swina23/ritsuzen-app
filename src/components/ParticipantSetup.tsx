@@ -3,6 +3,7 @@ import { useCompetition } from '../contexts/CompetitionContext';
 import { formatRank } from '../utils/formatters';
 import { storageManager } from '../utils/StorageManager';
 import { ParticipantMaster } from '../types';
+import { sortMastersByUsage, sortParticipantsByOrder, filterByRank } from '../utils/arrayUtils';
 
 const ParticipantSetup: React.FC = () => {
   const { state, addParticipant, removeParticipant, moveParticipantUp, moveParticipantDown } = useCompetition();
@@ -16,13 +17,7 @@ const ParticipantSetup: React.FC = () => {
 
   const loadMasters = useCallback(() => {
     const masterList = storageManager.getParticipantMasters();
-    setMasters(masterList.sort((a, b) => {
-      // 使用回数が多い順、同じなら最終使用日時が新しい順
-      if (a.usageCount !== b.usageCount) {
-        return b.usageCount - a.usageCount;
-      }
-      return new Date(b.lastUsed).getTime() - new Date(a.lastUsed).getTime();
-    }));
+    setMasters(sortMastersByUsage(masterList));
   }, []);
 
   useEffect(() => {
@@ -96,16 +91,14 @@ const ParticipantSetup: React.FC = () => {
   }, [selectedMasters, addParticipant, state.competition?.status, loadMasters]);
 
   const filteredMasters = useMemo(() => {
-    return filterRank 
-      ? masters.filter(master => master.rank === filterRank)
-      : masters;
+    return filterByRank(masters, filterRank);
   }, [masters, filterRank]);
 
   const isFinished = useMemo(() => state.competition?.status === 'finished', [state.competition?.status]);
 
   const sortedParticipants = useMemo(() => {
     if (!state.competition) return [];
-    return [...state.competition.participants].sort((a, b) => (a.order || 0) - (b.order || 0));
+    return sortParticipantsByOrder(state.competition.participants);
   }, [state.competition?.participants]);
 
   if (!state.competition) return null;

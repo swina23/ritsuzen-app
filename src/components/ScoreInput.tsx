@@ -2,6 +2,7 @@ import React, { useState, useCallback, useMemo } from 'react';
 import { useCompetition } from '../contexts/CompetitionContext';
 import { formatRank } from '../utils/formatters';
 import { getShotDisplay, getShotClass } from '../utils/shotHelpers';
+import { sortParticipantsByOrder } from '../utils/arrayUtils';
 
 const ScoreInput: React.FC = () => {
   const { state, updateShot } = useCompetition();
@@ -33,7 +34,7 @@ const ScoreInput: React.FC = () => {
   
   const sortedParticipants = useMemo(() => {
     if (!state.competition) return [];
-    return [...state.competition.participants].sort((a, b) => (a.order || 0) - (b.order || 0));
+    return sortParticipantsByOrder(state.competition.participants);
   }, [state.competition?.participants]);
 
   const roundOptions = useMemo(() => {

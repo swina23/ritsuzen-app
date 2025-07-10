@@ -6,6 +6,7 @@ import React, { useState, useEffect } from 'react';
 import { storageManager } from '../../utils/StorageManager';
 import { ParticipantMaster } from '../../types';
 import { formatRank } from '../../utils/formatters';
+import { sortMastersByUsage } from '../../utils/arrayUtils';
 
 interface ParticipantMasterSectionProps {
   onStatusUpdate: (message: string) => void;
@@ -20,12 +21,7 @@ const ParticipantMasterSection: React.FC<ParticipantMasterSectionProps> = ({
   // マスター一覧を読み込み
   const loadMasters = () => {
     const masterList = storageManager.getAllParticipantMasters();
-    setMasters(masterList.sort((a, b) => {
-      if (a.usageCount !== b.usageCount) {
-        return b.usageCount - a.usageCount;
-      }
-      return new Date(b.lastUsed).getTime() - new Date(a.lastUsed).getTime();
-    }));
+    setMasters(sortMastersByUsage(masterList));
   };
   
   useEffect(() => {

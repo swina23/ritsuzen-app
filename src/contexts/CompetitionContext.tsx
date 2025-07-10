@@ -4,6 +4,7 @@ import { initializeParticipantRecord, updateParticipantRecord, calculateRankings
 import { storageManager } from '../utils/StorageManager';
 import { generateCompetitionId, generateParticipantId } from '../utils/idGeneration';
 import { DEFAULT_ROUNDS_COUNT } from '../utils/constants';
+import { moveParticipantUp as moveUp, moveParticipantDown as moveDown } from '../utils/arrayUtils';
 
 interface CompetitionContextType {
   state: CompetitionState;
@@ -101,20 +102,7 @@ const competitionReducer = (state: CompetitionState, action: CompetitionAction):
       if (!state.competition) return state;
       
       const participantId = action.payload;
-      const sortedParticipants = [...state.competition.participants].sort((a, b) => (a.order || 0) - (b.order || 0));
-      const currentIndex = sortedParticipants.findIndex(p => p.id === participantId);
-      
-      if (currentIndex <= 0) return state; // Already at top
-      
-      // Swap positions in array
-      [sortedParticipants[currentIndex], sortedParticipants[currentIndex - 1]] = 
-      [sortedParticipants[currentIndex - 1], sortedParticipants[currentIndex]];
-      
-      // Reassign order values sequentially
-      const reorderedParticipants = sortedParticipants.map((participant, index) => ({
-        ...participant,
-        order: index + 1
-      }));
+      const reorderedParticipants = moveUp(state.competition.participants, participantId);
       
       return {
         ...state,
@@ -130,20 +118,7 @@ const competitionReducer = (state: CompetitionState, action: CompetitionAction):
       if (!state.competition) return state;
       
       const participantId = action.payload;
-      const sortedParticipants = [...state.competition.participants].sort((a, b) => (a.order || 0) - (b.order || 0));
-      const currentIndex = sortedParticipants.findIndex(p => p.id === participantId);
-      
-      if (currentIndex >= sortedParticipants.length - 1) return state; // Already at bottom
-      
-      // Swap positions in array
-      [sortedParticipants[currentIndex], sortedParticipants[currentIndex + 1]] = 
-      [sortedParticipants[currentIndex + 1], sortedParticipants[currentIndex]];
-      
-      // Reassign order values sequentially
-      const reorderedParticipants = sortedParticipants.map((participant, index) => ({
-        ...participant,
-        order: index + 1
-      }));
+      const reorderedParticipants = moveDown(state.competition.participants, participantId);
       
       return {
         ...state,
