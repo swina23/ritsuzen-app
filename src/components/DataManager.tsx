@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useCompetition } from '../contexts/CompetitionContext';
 import { exportAllData, exportCompetition, importData, ExportData } from '../utils/dataExport';
-import { exportToExcel, exportToExcelWithBorders, exportToCSV } from '../utils/excelExport';
+import { exportToExcelWithBorders, exportToCSV } from '../utils/excelExport';
 import { 
   getCompetitionHistory, 
   clearAllData, 

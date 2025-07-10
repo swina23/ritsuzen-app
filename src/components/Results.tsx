@@ -1,6 +1,6 @@
 import React from 'react';
 import { useCompetition } from '../contexts/CompetitionContext';
-import { exportToExcel, exportToExcelWithBorders, exportToCSV } from '../utils/excelExport';
+import { exportToExcelWithBorders, exportToCSV } from '../utils/excelExport';
 import { formatRank } from '../utils/formatters';
 
 const Results: React.FC = () => {

@@ -22,11 +22,13 @@ export const exportToExcelWithBorders = async (data: ExcelExportData): Promise<v
   worksheet.getCell('A1').font = { bold: true, size: 14 };
   worksheet.getCell('A1').alignment = { horizontal: 'center' };
   
-  worksheet.getCell('B1').value = `開催日: ${competition.date}`;
-  worksheet.getCell('C1').value = `参加者数: ${participants.length}名`;
-  worksheet.getCell('D1').value = competition.handicapEnabled ? 'ハンデ有効' : 'ハンデ無効';
+  // ヘッダー行2-4: 詳細情報（縦に配置）
+  worksheet.getCell('A2').value = `開催日: ${competition.date}`;
+  worksheet.getCell('A3').value = `参加者数: ${participants.length}名`;
+  worksheet.getCell('A4').value = competition.handicapEnabled ? 'ハンデ有効' : 'ハンデ無効';
   
   // 空行
+  worksheet.addRow([]);
   worksheet.addRow([]);
   
   // ヘッダー行: 列タイトル
