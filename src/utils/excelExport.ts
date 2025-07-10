@@ -93,12 +93,17 @@ export const exportToExcelWithBorders = async (data: ExcelExportData): Promise<v
     }
   }
   
-  // 参加者データを順位順にソート
+  // 参加者データを参加者の順番（order）でソート
   const sortedRecords = [...records].sort((a, b) => {
-    if (competition.handicapEnabled) {
-      return b.adjustedScore - a.adjustedScore;
-    }
-    return b.totalHits - a.totalHits;
+    const participantA = participants.find(p => p.id === a.participantId);
+    const participantB = participants.find(p => p.id === b.participantId);
+    
+    if (!participantA || !participantB) return 0;
+    
+    const orderA = participantA.order || 0;
+    const orderB = participantB.order || 0;
+    
+    return orderA - orderB;
   });
   
   // 各参加者のデータ行
