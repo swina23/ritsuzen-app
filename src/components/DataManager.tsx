@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useCompetition } from '../contexts/CompetitionContext';
 import StatusMessage from './data-manager/StatusMessage';
 import StorageInfo from './data-manager/StorageInfo';
 import DataExportSection from './data-manager/DataExportSection';
@@ -9,10 +8,7 @@ import CompetitionHistorySection from './data-manager/CompetitionHistorySection'
 import DangerSection from './data-manager/DangerSection';
 
 const DataManager: React.FC = () => {
-  const { state } = useCompetition();
   const [importStatus, setImportStatus] = useState<string>('');
-  
-  const hasCurrentCompetition = !!state.competition;
   
   const handleStatusUpdate = (message: string) => {
     setImportStatus(message);
@@ -31,7 +27,6 @@ const DataManager: React.FC = () => {
       <StorageInfo />
       
       <DataExportSection 
-        hasCurrentCompetition={hasCurrentCompetition}
         onStatusUpdate={handleStatusUpdate}
       />
       
