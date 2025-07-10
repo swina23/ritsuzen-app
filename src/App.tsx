@@ -12,7 +12,7 @@ import { createErrorReport, saveErrorReport } from './utils/errorUtils';
 import './App.css';
 
 // package.jsonからバージョンを取得
-const VERSION = '1.0.3';
+const VERSION = '1.1.0';
 
 type AppView = 'setup' | 'participants' | 'scoring' | 'results' | 'data';
 
