@@ -5,6 +5,10 @@ import ParticipantSetup from './components/ParticipantSetup';
 import ScoreInput from './components/ScoreInput';
 import Results from './components/Results';
 import DataManager from './components/DataManager';
+import ErrorBoundary from './components/ErrorBoundary';
+import CompetitionErrorBoundary from './components/error-boundaries/CompetitionErrorBoundary';
+import DataErrorBoundary from './components/error-boundaries/DataErrorBoundary';
+import { createErrorReport, saveErrorReport } from './utils/errorUtils';
 import './App.css';
 
 // package.jsonからバージョンを取得
@@ -16,24 +20,68 @@ const AppContent: React.FC = () => {
   const { state, finishCompetition, resetCompetition } = useCompetition();
   const [currentView, setCurrentView] = useState<AppView>('setup');
 
+  // エラーハンドラー
+  const handleError = (error: Error, errorInfo: any) => {
+    const errorReport = createErrorReport(
+      error,
+      'boundary',
+      `app-${currentView}`,
+      errorInfo,
+      {
+        competitionId: state.competition?.id,
+        participantCount: state.competition?.participants.length,
+        currentAction: `viewing-${currentView}`
+      }
+    );
+    saveErrorReport(errorReport);
+  };
+
   const renderView = () => {
     if (!state.competition && currentView !== 'data') {
-      return <CompetitionSetup />;
+      return (
+        <CompetitionErrorBoundary section="general" onError={handleError}>
+          <CompetitionSetup />
+        </CompetitionErrorBoundary>
+      );
     }
 
     switch (currentView) {
       case 'setup':
-        return <CompetitionSetup />;
+        return (
+          <CompetitionErrorBoundary section="general" onError={handleError}>
+            <CompetitionSetup />
+          </CompetitionErrorBoundary>
+        );
       case 'participants':
-        return <ParticipantSetup />;
+        return (
+          <CompetitionErrorBoundary section="participant-setup" onError={handleError}>
+            <ParticipantSetup />
+          </CompetitionErrorBoundary>
+        );
       case 'scoring':
-        return <ScoreInput />;
+        return (
+          <CompetitionErrorBoundary section="score-input" onError={handleError}>
+            <ScoreInput />
+          </CompetitionErrorBoundary>
+        );
       case 'results':
-        return <Results />;
+        return (
+          <CompetitionErrorBoundary section="results" onError={handleError}>
+            <Results />
+          </CompetitionErrorBoundary>
+        );
       case 'data':
-        return <DataManager />;
+        return (
+          <DataErrorBoundary operationType="general" onError={handleError}>
+            <DataManager />
+          </DataErrorBoundary>
+        );
       default:
-        return <CompetitionSetup />;
+        return (
+          <CompetitionErrorBoundary section="general" onError={handleError}>
+            <CompetitionSetup />
+          </CompetitionErrorBoundary>
+        );
     }
   };
 
@@ -126,9 +174,22 @@ const AppContent: React.FC = () => {
 
 function App() {
   return (
-    <CompetitionProvider>
-      <AppContent />
-    </CompetitionProvider>
+    <ErrorBoundary 
+      showDetails={process.env.NODE_ENV === 'development'}
+      onError={(error, errorInfo) => {
+        const errorReport = createErrorReport(
+          error,
+          'boundary',
+          'app-root',
+          errorInfo
+        );
+        saveErrorReport(errorReport);
+      }}
+    >
+      <CompetitionProvider>
+        <AppContent />
+      </CompetitionProvider>
+    </ErrorBoundary>
   );
 }
 

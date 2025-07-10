@@ -4,6 +4,7 @@
  */
 
 import { Competition, ParticipantMaster } from '../types';
+import { logStorageError } from './errorUtils';
 
 export interface StorageData {
   currentCompetition: Competition | null;
@@ -52,7 +53,9 @@ export class StorageManager {
         lastUpdated: parsed.lastUpdated || new Date().toISOString()
       };
     } catch (error) {
+      const err = error instanceof Error ? error : new Error('Failed to parse stored data');
       console.error('Failed to parse stored data:', error);
+      logStorageError(err, 'getStorageData', 'competition-data');
       return defaultData;
     }
   }
@@ -68,7 +71,9 @@ export class StorageManager {
       };
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(updatedData));
     } catch (error) {
+      const err = error instanceof Error ? error : new Error('Failed to save data to localStorage');
       console.error('Failed to save data to localStorage:', error);
+      logStorageError(err, 'saveStorageData', 'competition-data');
       throw new Error('ストレージへの保存に失敗しました');
     }
   }
