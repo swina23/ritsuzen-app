@@ -30,7 +30,7 @@ export const exportAllData = (): void => {
       competitions,
       metadata: {
         totalCompetitions: competitions.length,
-        appVersion: '1.0.0'
+        appVersion: '1.0.3'
       }
     };
 
