@@ -346,17 +346,51 @@
 }
 
 .score-table table {
-  width: 100%;
+  width: auto;
   border-collapse: collapse;
   margin-top: 10px;
+  table-layout: fixed;
 }
 
 .score-table th, .score-table td {
-  padding: 8px;
+  padding: 6px;
   text-align: center;
   border: 1px solid #ddd;
   color: #2c3e50;
   vertical-align: middle;
+}
+
+/* 各列の幅を文字に合わせて設定 */
+.score-table th:nth-child(1),
+.score-table td:nth-child(1) {
+  width: 80px; /* 参加者 */
+}
+
+.score-table th:nth-child(2),
+.score-table td:nth-child(2) {
+  width: 45px; /* 段位 */
+}
+
+.score-table th:nth-child(3),
+.score-table th:nth-child(4),
+.score-table th:nth-child(5),
+.score-table th:nth-child(6),
+.score-table td:nth-child(3),
+.score-table td:nth-child(4),
+.score-table td:nth-child(5),
+.score-table td:nth-child(6) {
+  width: 50px; /* 1射目〜4射目 */
+  padding: 4px;
+}
+
+.score-table th:nth-child(7),
+.score-table td:nth-child(7) {
+  width: 55px; /* 的中計 */
+}
+
+.score-table th:nth-child(8),
+.score-table td:nth-child(8) {
+  width: 50px; /* 総計 */
 }
 
 .score-table td {
