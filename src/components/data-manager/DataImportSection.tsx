@@ -2,7 +2,7 @@
  * データ読み込みセクションコンポーネント
  */
 
-import React, { useRef, useCallback } from 'react';
+import React, { useRef, useCallback, useState } from 'react';
 import { importData } from '../../utils/dataExport';
 import { storageManager } from '../../utils/StorageManager';
 
@@ -17,16 +17,26 @@ const DataImportSection: React.FC<DataImportSectionProps> = React.memo(({
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const masterFileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedMasterFile, setSelectedMasterFile] = useState<File | null>(null);
+
+  const handleFileSelect = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+
+  const handleFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    setSelectedFile(file || null);
+  }, []);
 
   const handleImport = useCallback(async () => {
-    const file = fileInputRef.current?.files?.[0];
-    if (!file) {
+    if (!selectedFile) {
       onStatusUpdate('❌ ファイルを選択してください');
       return;
     }
 
     try {
-      const importResult = await importData(file);
+      const importResult = await importData(selectedFile);
       
       if (importResult.success && importResult.data) {
         // インポートしたデータをStorageManagerに保存
@@ -59,18 +69,27 @@ const DataImportSection: React.FC<DataImportSectionProps> = React.memo(({
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
+      setSelectedFile(null);
     }
-  }, [onStatusUpdate]);
+  }, [selectedFile, onStatusUpdate]);
+
+  const handleMasterFileSelect = useCallback(() => {
+    masterFileInputRef.current?.click();
+  }, []);
+
+  const handleMasterFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    setSelectedMasterFile(file || null);
+  }, []);
 
   const handleImportMasters = useCallback(async () => {
-    const file = masterFileInputRef.current?.files?.[0];
-    if (!file) {
+    if (!selectedMasterFile) {
       onStatusUpdate('❌ ファイルを選択してください');
       return;
     }
 
     try {
-      const text = await file.text();
+      const text = await selectedMasterFile.text();
       const data = JSON.parse(text);
       const importResult = storageManager.importParticipantMasters(data);
       
@@ -87,8 +106,9 @@ const DataImportSection: React.FC<DataImportSectionProps> = React.memo(({
       if (masterFileInputRef.current) {
         masterFileInputRef.current.value = '';
       }
+      setSelectedMasterFile(null);
     }
-  }, [onStatusUpdate, onMastersUpdated]);
+  }, [selectedMasterFile, onStatusUpdate, onMastersUpdated]);
 
   return (
     <div className="data-import-section">
@@ -96,23 +116,38 @@ const DataImportSection: React.FC<DataImportSectionProps> = React.memo(({
       
       <div className="import-group">
         <h4>🏹 大会データ</h4>
-        <div className="import-controls">
+        
+        {/* Step 1: ファイル選択 */}
+        <div className="import-step">
           <input
             type="file"
             accept=".json"
             ref={fileInputRef}
+            onChange={handleFileChange}
             style={{ display: 'none' }}
           />
           <button 
-            onClick={() => fileInputRef.current?.click()} 
-            className="import-btn"
+            onClick={handleFileSelect} 
+            className="file-select-btn"
           >
-            📂 ファイル選択
+            📁 ファイル選択
           </button>
-          <button onClick={handleImport} className="import-btn primary">
-            📥 インポート
-          </button>
+          {selectedFile && (
+            <div className="selected-file">
+              ✓ {selectedFile.name}
+            </div>
+          )}
         </div>
+        
+        {/* Step 2: インポート実行 */}
+        {selectedFile && (
+          <div className="import-step">
+            <button onClick={handleImport} className="import-btn">
+              📥 インポート実行
+            </button>
+          </div>
+        )}
+        
         <p className="import-note">
           ⚠️ 現在のデータは上書きされます
         </p>
@@ -120,23 +155,38 @@ const DataImportSection: React.FC<DataImportSectionProps> = React.memo(({
 
       <div className="import-group">
         <h4>👥 参加者マスター</h4>
-        <div className="import-controls">
+        
+        {/* Step 1: ファイル選択 */}
+        <div className="import-step">
           <input
             type="file"
             accept=".json"
             ref={masterFileInputRef}
+            onChange={handleMasterFileChange}
             style={{ display: 'none' }}
           />
           <button 
-            onClick={() => masterFileInputRef.current?.click()} 
-            className="import-btn"
+            onClick={handleMasterFileSelect} 
+            className="file-select-btn"
           >
-            📂 ファイル選択
+            📁 ファイル選択
           </button>
-          <button onClick={handleImportMasters} className="import-btn primary">
-            📥 インポート
-          </button>
+          {selectedMasterFile && (
+            <div className="selected-file">
+              ✓ {selectedMasterFile.name}
+            </div>
+          )}
         </div>
+        
+        {/* Step 2: インポート実行 */}
+        {selectedMasterFile && (
+          <div className="import-step">
+            <button onClick={handleImportMasters} className="import-btn">
+              📥 インポート実行
+            </button>
+          </div>
+        )}
+        
         <p className="import-note">
           💡 既存のマスターに追加されます
         </p>

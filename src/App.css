@@ -1124,6 +1124,37 @@
   font-style: italic;
 }
 
+/* Import step styling */
+.import-step {
+  margin-bottom: 12px;
+}
+
+.file-select-btn {
+  padding: 8px 16px;
+  background-color: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.file-select-btn:hover {
+  background-color: #5a6268;
+}
+
+.selected-file {
+  margin-top: 8px;
+  padding: 8px 12px;
+  background-color: #d4edda;
+  border: 1px solid #c3e6cb;
+  border-radius: 4px;
+  color: #155724;
+  font-size: 14px;
+  display: inline-block;
+}
+
 /* Export controls styling */
 .export-buttons {
   display: flex;
