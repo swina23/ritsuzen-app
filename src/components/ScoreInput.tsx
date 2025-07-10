@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useCompetition } from '../contexts/CompetitionContext';
 import { formatRank } from '../utils/formatters';
+import { getShotDisplay, getShotClass } from '../utils/shotHelpers';
 
 const ScoreInput: React.FC = () => {
   const { state, updateShot } = useCompetition();
@@ -32,15 +33,6 @@ const ScoreInput: React.FC = () => {
     }
   };
 
-  const getShotDisplay = (hit: boolean | null | undefined) => {
-    if (hit === null || hit === undefined) return '-';
-    return hit ? '○' : '×';
-  };
-
-  const getShotClass = (hit: boolean | null | undefined) => {
-    if (hit === null || hit === undefined) return 'unshot';
-    return hit ? 'hit' : 'miss';
-  };
 
   const isFinished = state.competition?.status === 'finished';
 

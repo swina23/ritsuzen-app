@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useCompetition } from '../contexts/CompetitionContext';
+import { ROUNDS_OPTIONS } from '../utils/constants';
 
 const CompetitionSetup: React.FC = () => {
   const { state, createCompetition } = useCompetition();
@@ -63,11 +64,11 @@ const CompetitionSetup: React.FC = () => {
             onChange={(e) => setRoundsCount(Number(e.target.value))}
             disabled={hasActiveCompetition}
           >
-            <option value={5}>5立 (20射)</option>
-            <option value={10}>10立 (40射)</option>
-            <option value={15}>15立 (60射)</option>
-            <option value={20}>20立 (80射)</option>
-            <option value={25}>25立 (100射)</option>
+            {ROUNDS_OPTIONS.map(rounds => (
+              <option key={rounds} value={rounds}>
+                {rounds}立 ({rounds * 4}射)
+              </option>
+            ))}
           </select>
         </div>
         

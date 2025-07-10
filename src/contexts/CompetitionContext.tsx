@@ -2,6 +2,8 @@ import React, { createContext, useContext, useReducer, ReactNode, useEffect } fr
 import { Competition, CompetitionState, Participant } from '../types';
 import { initializeParticipantRecord, updateParticipantRecord, calculateRankings } from '../utils/calculations';
 import { saveCurrentCompetition, loadCurrentCompetition, saveCompetitionToHistory } from '../utils/localStorage';
+import { generateCompetitionId, generateParticipantId } from '../utils/idGeneration';
+import { DEFAULT_ROUNDS_COUNT } from '../utils/constants';
 
 interface CompetitionContextType {
   state: CompetitionState;
@@ -37,9 +39,9 @@ const CompetitionContext = createContext<CompetitionContextType | undefined>(und
 const competitionReducer = (state: CompetitionState, action: CompetitionAction): CompetitionState => {
   switch (action.type) {
     case 'CREATE_COMPETITION': {
-      const { name, date, handicapEnabled, roundsCount = 5 } = action.payload;
+      const { name, date, handicapEnabled, roundsCount = DEFAULT_ROUNDS_COUNT } = action.payload;
       const competition: Competition = {
-        id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        id: generateCompetitionId(),
         name,
         date,
         type: '20',
@@ -61,16 +63,9 @@ const competitionReducer = (state: CompetitionState, action: CompetitionAction):
       if (!state.competition) return state;
       
       const nextOrder = Math.max(0, ...state.competition.participants.map(p => p.order || 0)) + 1;
-      // 一意のIDを生成
-      const timestamp = Date.now();
-      const random1 = Math.random().toString(36).substr(2, 9);
-      const random2 = Math.random().toString(36).substr(2, 9);
-      const counter = Math.floor(Math.random() * 1000000);
-      const generatedId = `${timestamp}-${random1}-${random2}-${counter}`;
-      
       const participant: Participant = {
         ...action.payload,
-        id: generatedId,
+        id: generateParticipantId(),
         order: nextOrder
       };
       
@@ -233,7 +228,7 @@ const competitionReducer = (state: CompetitionState, action: CompetitionAction):
         competition: {
           ...action.payload,
           participants: migratedParticipants,
-          roundsCount: action.payload.roundsCount !== undefined ? action.payload.roundsCount : 5
+          roundsCount: action.payload.roundsCount !== undefined ? action.payload.roundsCount : DEFAULT_ROUNDS_COUNT
         }
       };
     }
@@ -261,7 +256,7 @@ export const CompetitionProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
   }, [state.competition]);
 
-  const createCompetition = (name: string, date: string, handicapEnabled: boolean, roundsCount: number = 5) => {
+  const createCompetition = (name: string, date: string, handicapEnabled: boolean, roundsCount: number = DEFAULT_ROUNDS_COUNT) => {
     dispatch({ type: 'CREATE_COMPETITION', payload: { name, date, handicapEnabled, roundsCount } });
   };
 

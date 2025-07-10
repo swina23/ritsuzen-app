@@ -2,17 +2,7 @@ import React from 'react';
 import { useCompetition } from '../contexts/CompetitionContext';
 import { exportToExcelWithBorders, exportToCSV } from '../utils/excelExport';
 import { formatRank } from '../utils/formatters';
-
-// ショット表示用のヘルパー関数
-const getShotDisplay = (hit: boolean | null | undefined) => {
-  if (hit === null || hit === undefined) return '-';
-  return hit ? '○' : '×';
-};
-
-const getShotClass = (hit: boolean | null | undefined) => {
-  if (hit === null || hit === undefined) return 'unshot';
-  return hit ? 'hit' : 'miss';
-};
+import { getShotDisplay, getShotClass } from '../utils/shotHelpers';
 
 const Results: React.FC = () => {
   const { state } = useCompetition();
