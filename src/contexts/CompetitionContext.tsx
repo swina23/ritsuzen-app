@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useReducer, ReactNode, useEffect } from 'react';
 import { Competition, CompetitionState, Participant } from '../types';
 import { initializeParticipantRecord, updateParticipantRecord, calculateRankings } from '../utils/calculations';
-import { saveCurrentCompetition, loadCurrentCompetition, saveCompetitionToHistory } from '../utils/localStorage';
+import { storageManager } from '../utils/StorageManager';
 import { generateCompetitionId, generateParticipantId } from '../utils/idGeneration';
 import { DEFAULT_ROUNDS_COUNT } from '../utils/constants';
 
@@ -243,7 +243,7 @@ export const CompetitionProvider: React.FC<{ children: ReactNode }> = ({ childre
 
   // アプリ起動時にLocalStorageからデータを読み込み
   useEffect(() => {
-    const savedCompetition = loadCurrentCompetition();
+    const savedCompetition = storageManager.loadCurrentCompetition();
     if (savedCompetition) {
       dispatch({ type: 'LOAD_COMPETITION', payload: savedCompetition });
     }
@@ -252,7 +252,7 @@ export const CompetitionProvider: React.FC<{ children: ReactNode }> = ({ childre
   // 大会データが変更されるたびにLocalStorageに保存
   useEffect(() => {
     if (state.competition) {
-      saveCurrentCompetition(state.competition);
+      storageManager.saveCurrentCompetition(state.competition);
     }
   }, [state.competition]);
 
@@ -289,7 +289,7 @@ export const CompetitionProvider: React.FC<{ children: ReactNode }> = ({ childre
           status: 'finished' as const,
           updatedAt: new Date().toISOString()
         };
-        saveCompetitionToHistory(finishedCompetition);
+        storageManager.saveCompetitionToHistory(finishedCompetition);
       }
       dispatch({ type: 'FINISH_COMPETITION' });
     }

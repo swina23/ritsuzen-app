@@ -1,5 +1,5 @@
 import { Competition } from '../types';
-import { getCompetitionHistory } from './localStorage';
+import { storageManager } from './StorageManager';
 import { formatRank } from './formatters';
 
 export interface ExportData {
@@ -20,7 +20,7 @@ export interface ExportData {
 // 全データをJSONファイルとしてエクスポート
 export const exportAllData = (): void => {
   try {
-    const competitions = getCompetitionHistory();
+    const competitions = storageManager.getCompetitionHistory();
     const currentCompetition = competitions.find(c => c.status !== 'finished') || null;
     
     const exportData: ExportData = {

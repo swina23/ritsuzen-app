@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useCompetition } from '../contexts/CompetitionContext';
 import { formatRank } from '../utils/formatters';
-import { getParticipantMasters, findMasterByName, saveParticipantMaster, incrementMasterUsage } from '../utils/localStorage';
+import { storageManager } from '../utils/StorageManager';
 import { ParticipantMaster } from '../types';
 
 const ParticipantSetup: React.FC = () => {
@@ -16,7 +16,7 @@ const ParticipantSetup: React.FC = () => {
 
   useEffect(() => {
     const loadMasters = () => {
-      const masterList = getParticipantMasters();
+      const masterList = storageManager.getParticipantMasters();
       setMasters(masterList.sort((a, b) => {
         // 使用回数が多い順、同じなら最終使用日時が新しい順
         if (a.usageCount !== b.usageCount) {
@@ -39,10 +39,10 @@ const ParticipantSetup: React.FC = () => {
       
       // マスターに保存する場合
       if (saveToMaster) {
-        const existingMaster = findMasterByName(name.trim());
+        const existingMaster = storageManager.findMasterByName(name.trim());
         if (!existingMaster) {
           try {
-            saveParticipantMaster({
+            storageManager.saveParticipantMaster({
               name: name.trim(),
               rank,
               isActive: true,
@@ -50,7 +50,7 @@ const ParticipantSetup: React.FC = () => {
               usageCount: 1
             });
             // マスターリストを再読み込み
-            const updatedMasters = getParticipantMasters();
+            const updatedMasters = storageManager.getParticipantMasters();
             setMasters(updatedMasters.sort((a, b) => {
               if (a.usageCount !== b.usageCount) {
                 return b.usageCount - a.usageCount;
@@ -89,7 +89,7 @@ const ParticipantSetup: React.FC = () => {
       const master = masters.find(m => m.id === masterId);
       if (master) {
         addParticipant({ name: master.name, rank: master.rank });
-        incrementMasterUsage(masterId);
+        storageManager.incrementMasterUsage(masterId);
         // 少し待機してタイムスタンプの重複を防ぐ
         await new Promise(resolve => setTimeout(resolve, 1));
       }
@@ -97,7 +97,7 @@ const ParticipantSetup: React.FC = () => {
     
     setSelectedMasters(new Set());
     // マスターリストを再読み込み（使用回数更新のため）
-    const updatedMasters = getParticipantMasters();
+    const updatedMasters = storageManager.getParticipantMasters();
     setMasters(updatedMasters.sort((a, b) => {
       if (a.usageCount !== b.usageCount) {
         return b.usageCount - a.usageCount;
