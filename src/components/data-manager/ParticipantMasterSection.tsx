@@ -42,10 +42,8 @@ const ParticipantMasterSection: React.FC<ParticipantMasterSectionProps> = ({
     onStatusUpdate(`✅ 参加者を${currentActive ? '無効化' : '有効化'}しました`);
   };
 
-  // 外部からマスター一覧を更新するためのメソッドを公開
-  React.useImperativeHandle(React.forwardRef(() => null), () => ({
-    loadMasters
-  }));
+  // 外部からマスター一覧を更新するためのメソッドを公開（未使用のため削除）
+  // React.useImperativeHandle を削除
 
   return (
     <div className="masters-section">
