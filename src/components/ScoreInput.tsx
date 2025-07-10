@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { useCompetition } from '../contexts/CompetitionContext';
 import { formatRank } from '../utils/formatters';
 import { getShotDisplay, getShotClass } from '../utils/shotHelpers';
@@ -7,11 +7,7 @@ const ScoreInput: React.FC = () => {
   const { state, updateShot } = useCompetition();
   const [selectedRound, setSelectedRound] = useState(1);
 
-  if (!state.competition || state.competition.participants.length === 0) {
-    return <div>参加者を登録してください</div>;
-  }
-
-  const handleShotClick = (participantId: string, roundNumber: number, shotIndex: number) => {
+  const handleShotClick = useCallback((participantId: string, roundNumber: number, shotIndex: number) => {
     // 大会終了後は記録編集を無効化
     if (state.competition?.status === 'finished') {
       return;
@@ -31,10 +27,24 @@ const ScoreInput: React.FC = () => {
       }
       updateShot(participantId, roundNumber, shotIndex, newHit);
     }
-  };
+  }, [state.competition, updateShot]);
 
+  const isFinished = useMemo(() => state.competition?.status === 'finished', [state.competition?.status]);
+  
+  const sortedParticipants = useMemo(() => {
+    if (!state.competition) return [];
+    return [...state.competition.participants].sort((a, b) => (a.order || 0) - (b.order || 0));
+  }, [state.competition?.participants]);
 
-  const isFinished = state.competition?.status === 'finished';
+  const roundOptions = useMemo(() => {
+    if (!state.competition) return [];
+    return Array.from({ length: state.competition.roundsCount }, (_, i) => i + 1);
+  }, [state.competition?.roundsCount]);
+
+  if (!state.competition || state.competition.participants.length === 0) {
+    return <div>参加者を登録してください</div>;
+  }
+
 
   return (
     <div className="score-input">
@@ -48,7 +58,7 @@ const ScoreInput: React.FC = () => {
       
       <div className="round-selector">
         <label>立選択:</label>
-        {Array.from({ length: state.competition.roundsCount }, (_, i) => i + 1).map(round => (
+        {roundOptions.map(round => (
           <button
             key={round}
             onClick={() => setSelectedRound(round)}
@@ -74,9 +84,7 @@ const ScoreInput: React.FC = () => {
             </tr>
           </thead>
           <tbody>
-            {state.competition.participants
-              .sort((a, b) => (a.order || 0) - (b.order || 0))
-              .map((participant) => {
+            {sortedParticipants.map((participant) => {
               const record = state.competition?.records.find(r => r.participantId === participant.id);
               const round = record?.rounds.find(r => r.roundNumber === selectedRound);
               

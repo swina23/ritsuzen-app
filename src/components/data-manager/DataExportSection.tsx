@@ -2,7 +2,7 @@
  * データ出力セクションコンポーネント
  */
 
-import React from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { useCompetition } from '../../contexts/CompetitionContext';
 import { exportAllData, exportCompetition } from '../../utils/dataExport';
 import { exportToExcelWithBorders, exportToCSV } from '../../utils/excelExport';
@@ -13,13 +13,22 @@ interface DataExportSectionProps {
   onStatusUpdate: (message: string) => void;
 }
 
-const DataExportSection: React.FC<DataExportSectionProps> = ({ 
+const DataExportSection: React.FC<DataExportSectionProps> = React.memo(({ 
   hasCurrentCompetition, 
   onStatusUpdate 
 }) => {
   const { state } = useCompetition();
 
-  const handleExportAll = () => {
+  const exportData = useMemo(() => {
+    if (!state.competition) return null;
+    return {
+      competition: state.competition,
+      participants: state.competition.participants,
+      records: state.competition.records
+    };
+  }, [state.competition]);
+
+  const handleExportAll = useCallback(() => {
     try {
       exportAllData();
       onStatusUpdate('✅ 全データを出力しました');
@@ -27,9 +36,9 @@ const DataExportSection: React.FC<DataExportSectionProps> = ({
       console.error('Export failed:', error);
       onStatusUpdate('❌ 出力に失敗しました');
     }
-  };
+  }, [onStatusUpdate]);
 
-  const handleExportCurrent = () => {
+  const handleExportCurrent = useCallback(() => {
     try {
       if (!state.competition) {
         onStatusUpdate('❌ 現在の大会がありません');
@@ -41,9 +50,9 @@ const DataExportSection: React.FC<DataExportSectionProps> = ({
       console.error('Export failed:', error);
       onStatusUpdate('❌ 出力に失敗しました');
     }
-  };
+  }, [state.competition, onStatusUpdate]);
 
-  const handleExportMasters = () => {
+  const handleExportMasters = useCallback(() => {
     try {
       storageManager.exportParticipantMasters();
       onStatusUpdate('✅ 参加者マスターを出力しました');
@@ -51,49 +60,37 @@ const DataExportSection: React.FC<DataExportSectionProps> = ({
       console.error('Export failed:', error);
       onStatusUpdate('❌ 出力に失敗しました');
     }
-  };
+  }, [onStatusUpdate]);
 
-  const handleExcelExport = () => {
+  const handleExcelExport = useCallback(() => {
     try {
-      if (!state.competition) {
+      if (!exportData) {
         onStatusUpdate('❌ 現在の大会がありません');
         return;
       }
       
-      const data = {
-        competition: state.competition,
-        participants: state.competition.participants,
-        records: state.competition.records
-      };
-      
-      exportToExcelWithBorders(data);
+      exportToExcelWithBorders(exportData);
       onStatusUpdate('✅ Excelファイルを出力しました');
     } catch (error) {
       console.error('Excel export failed:', error);
       onStatusUpdate('❌ Excel出力に失敗しました');
     }
-  };
+  }, [exportData, onStatusUpdate]);
 
-  const handleCSVExport = () => {
+  const handleCSVExport = useCallback(() => {
     try {
-      if (!state.competition) {
+      if (!exportData) {
         onStatusUpdate('❌ 現在の大会がありません');
         return;
       }
       
-      const data = {
-        competition: state.competition,
-        participants: state.competition.participants,
-        records: state.competition.records
-      };
-      
-      exportToCSV(data);
+      exportToCSV(exportData);
       onStatusUpdate('✅ CSVファイルを出力しました');
     } catch (error) {
       console.error('CSV export failed:', error);
       onStatusUpdate('❌ CSV出力に失敗しました');
     }
-  };
+  }, [exportData, onStatusUpdate]);
 
   return (
     <div className="data-export-section">
@@ -133,6 +130,8 @@ const DataExportSection: React.FC<DataExportSectionProps> = ({
       )}
     </div>
   );
-};
+});
+
+DataExportSection.displayName = 'DataExportSection';
 
 export default DataExportSection;

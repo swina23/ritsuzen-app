@@ -8,7 +8,7 @@ interface StatusMessageProps {
   message: string;
 }
 
-const StatusMessage: React.FC<StatusMessageProps> = ({ message }) => {
+const StatusMessage: React.FC<StatusMessageProps> = React.memo(({ message }) => {
   if (!message) return null;
 
   return (
@@ -16,6 +16,8 @@ const StatusMessage: React.FC<StatusMessageProps> = ({ message }) => {
       <p>{message}</p>
     </div>
   );
-};
+});
+
+StatusMessage.displayName = 'StatusMessage';
 
 export default StatusMessage;

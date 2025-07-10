@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useCompetition } from '../contexts/CompetitionContext';
 import { formatRank } from '../utils/formatters';
 import { storageManager } from '../utils/StorageManager';
@@ -14,21 +14,22 @@ const ParticipantSetup: React.FC = () => {
   const [showMasters, setShowMasters] = useState(true);
   const [filterRank, setFilterRank] = useState<number | null>(null);
 
-  useEffect(() => {
-    const loadMasters = () => {
-      const masterList = storageManager.getParticipantMasters();
-      setMasters(masterList.sort((a, b) => {
-        // 使用回数が多い順、同じなら最終使用日時が新しい順
-        if (a.usageCount !== b.usageCount) {
-          return b.usageCount - a.usageCount;
-        }
-        return new Date(b.lastUsed).getTime() - new Date(a.lastUsed).getTime();
-      }));
-    };
-    loadMasters();
+  const loadMasters = useCallback(() => {
+    const masterList = storageManager.getParticipantMasters();
+    setMasters(masterList.sort((a, b) => {
+      // 使用回数が多い順、同じなら最終使用日時が新しい順
+      if (a.usageCount !== b.usageCount) {
+        return b.usageCount - a.usageCount;
+      }
+      return new Date(b.lastUsed).getTime() - new Date(a.lastUsed).getTime();
+    }));
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    loadMasters();
+  }, [loadMasters]);
+
+  const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     // 大会終了後は参加者追加を無効化
     if (state.competition?.status === 'finished') {
@@ -50,13 +51,7 @@ const ParticipantSetup: React.FC = () => {
               usageCount: 1
             });
             // マスターリストを再読み込み
-            const updatedMasters = storageManager.getParticipantMasters();
-            setMasters(updatedMasters.sort((a, b) => {
-              if (a.usageCount !== b.usageCount) {
-                return b.usageCount - a.usageCount;
-              }
-              return new Date(b.lastUsed).getTime() - new Date(a.lastUsed).getTime();
-            }));
+            loadMasters();
           } catch (error) {
             console.error('Failed to save to master:', error);
           }
@@ -67,9 +62,9 @@ const ParticipantSetup: React.FC = () => {
       setRank(1);
       setSaveToMaster(false);
     }
-  };
+  }, [addParticipant, saveToMaster, name, rank, state.competition?.status, loadMasters]);
 
-  const handleMasterSelection = (masterId: string) => {
+  const handleMasterSelection = useCallback((masterId: string) => {
     const newSelected = new Set(selectedMasters);
     if (newSelected.has(masterId)) {
       newSelected.delete(masterId);
@@ -77,9 +72,9 @@ const ParticipantSetup: React.FC = () => {
       newSelected.add(masterId);
     }
     setSelectedMasters(newSelected);
-  };
+  }, [selectedMasters]);
 
-  const handleAddSelectedMasters = async () => {
+  const handleAddSelectedMasters = useCallback(async () => {
     if (state.competition?.status === 'finished') {
       return;
     }
@@ -97,22 +92,24 @@ const ParticipantSetup: React.FC = () => {
     
     setSelectedMasters(new Set());
     // マスターリストを再読み込み（使用回数更新のため）
-    const updatedMasters = storageManager.getParticipantMasters();
-    setMasters(updatedMasters.sort((a, b) => {
-      if (a.usageCount !== b.usageCount) {
-        return b.usageCount - a.usageCount;
-      }
-      return new Date(b.lastUsed).getTime() - new Date(a.lastUsed).getTime();
-    }));
-  };
+    loadMasters();
+  }, [selectedMasters, addParticipant, state.competition?.status, loadMasters]);
 
-  const filteredMasters = filterRank 
-    ? masters.filter(master => master.rank === filterRank)
-    : masters;
+  const filteredMasters = useMemo(() => {
+    return filterRank 
+      ? masters.filter(master => master.rank === filterRank)
+      : masters;
+  }, [masters, filterRank]);
+
+  const isFinished = useMemo(() => state.competition?.status === 'finished', [state.competition?.status]);
+
+  const sortedParticipants = useMemo(() => {
+    if (!state.competition) return [];
+    return [...state.competition.participants].sort((a, b) => (a.order || 0) - (b.order || 0));
+  }, [state.competition?.participants]);
 
   if (!state.competition) return null;
 
-  const isFinished = state.competition.status === 'finished';
 
   return (
     <div className="participant-setup">
@@ -238,13 +235,12 @@ const ParticipantSetup: React.FC = () => {
       </div>
 
       <div className="participants-list">
-        <h3>参加者一覧 ({state.competition.participants.length}名)</h3>
-        {state.competition.participants.length === 0 ? (
+        <h3>参加者一覧 ({sortedParticipants.length}名)</h3>
+        {sortedParticipants.length === 0 ? (
           <p>参加者がいません</p>
         ) : (
           <ul>
-            {state.competition.participants
-              .sort((a, b) => (a.order || 0) - (b.order || 0))
+            {sortedParticipants
               .map((participant, index) => (
               <li key={participant.id} className="participant-item">
                 <span className="participant-info">

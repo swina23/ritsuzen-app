@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { useCompetition } from '../contexts/CompetitionContext';
 import { exportToExcelWithBorders, exportToCSV } from '../utils/excelExport';
 import { formatRank } from '../utils/formatters';
@@ -7,43 +7,47 @@ import { getShotDisplay, getShotClass } from '../utils/shotHelpers';
 const Results: React.FC = () => {
   const { state } = useCompetition();
 
-  if (!state.competition || state.competition.participants.length === 0) {
-    return <div>データがありません</div>;
-  }
+  const sortedRecords = useMemo(() => {
+    if (!state.competition) return [];
+    return [...state.competition.records].sort((a, b) => {
+      if (state.competition?.handicapEnabled) {
+        return b.adjustedScore - a.adjustedScore;
+      }
+      return b.totalHits - a.totalHits;
+    });
+  }, [state.competition?.records, state.competition?.handicapEnabled]);
 
-  const sortedRecords = [...state.competition.records].sort((a, b) => {
-    if (state.competition?.handicapEnabled) {
-      return b.adjustedScore - a.adjustedScore;
-    }
-    return b.totalHits - a.totalHits;
-  });
-
-  const getDisplayRank = (record: any): number => {
+  const getDisplayRank = useCallback((record: any): number => {
     if (state.competition?.handicapEnabled) {
       return record.rankWithHandicap;
     }
     return record.rank;
-  };
+  }, [state.competition?.handicapEnabled]);
 
-  const handleExcelExport = async () => {
-    if (state.competition) {
-      await exportToExcelWithBorders({
-        competition: state.competition,
-        participants: state.competition.participants,
-        records: state.competition.records
-      });
-    }
-  };
+  const exportData = useMemo(() => {
+    if (!state.competition) return null;
+    return {
+      competition: state.competition,
+      participants: state.competition.participants,
+      records: state.competition.records
+    };
+  }, [state.competition]);
 
-  const handleCSVExport = () => {
-    if (state.competition) {
-      exportToCSV({
-        competition: state.competition,
-        participants: state.competition.participants,
-        records: state.competition.records
-      });
+  const handleExcelExport = useCallback(async () => {
+    if (exportData) {
+      await exportToExcelWithBorders(exportData);
     }
-  };
+  }, [exportData]);
+
+  const handleCSVExport = useCallback(() => {
+    if (exportData) {
+      exportToCSV(exportData);
+    }
+  }, [exportData]);
+
+  if (!state.competition || state.competition.participants.length === 0) {
+    return <div>データがありません</div>;
+  }
 
   return (
     <div className="results">

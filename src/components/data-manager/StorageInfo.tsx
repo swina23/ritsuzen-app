@@ -5,7 +5,7 @@
 import React from 'react';
 import { storageManager } from '../../utils/StorageManager';
 
-const StorageInfo: React.FC = () => {
+const StorageInfo: React.FC = React.memo(() => {
   const storageInfo = storageManager.getStorageInfo();
 
   return (
@@ -24,6 +24,8 @@ const StorageInfo: React.FC = () => {
       </div>
     </div>
   );
-};
+});
+
+StorageInfo.displayName = 'StorageInfo';
 
 export default StorageInfo;

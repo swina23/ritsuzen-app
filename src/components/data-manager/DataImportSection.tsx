@@ -2,7 +2,7 @@
  * データ読み込みセクションコンポーネント
  */
 
-import React, { useRef } from 'react';
+import React, { useRef, useCallback } from 'react';
 import { importData } from '../../utils/dataExport';
 import { storageManager } from '../../utils/StorageManager';
 
@@ -11,14 +11,14 @@ interface DataImportSectionProps {
   onMastersUpdated: () => void;
 }
 
-const DataImportSection: React.FC<DataImportSectionProps> = ({ 
+const DataImportSection: React.FC<DataImportSectionProps> = React.memo(({ 
   onStatusUpdate, 
   onMastersUpdated 
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const masterFileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleImport = async () => {
+  const handleImport = useCallback(async () => {
     const file = fileInputRef.current?.files?.[0];
     if (!file) {
       onStatusUpdate('❌ ファイルを選択してください');
@@ -46,9 +46,9 @@ const DataImportSection: React.FC<DataImportSectionProps> = ({
         fileInputRef.current.value = '';
       }
     }
-  };
+  }, [onStatusUpdate]);
 
-  const handleImportMasters = async () => {
+  const handleImportMasters = useCallback(async () => {
     const file = masterFileInputRef.current?.files?.[0];
     if (!file) {
       onStatusUpdate('❌ ファイルを選択してください');
@@ -74,7 +74,7 @@ const DataImportSection: React.FC<DataImportSectionProps> = ({
         masterFileInputRef.current.value = '';
       }
     }
-  };
+  }, [onStatusUpdate, onMastersUpdated]);
 
   return (
     <div className="data-import-section">
@@ -129,6 +129,8 @@ const DataImportSection: React.FC<DataImportSectionProps> = ({
       </div>
     </div>
   );
-};
+});
+
+DataImportSection.displayName = 'DataImportSection';
 
 export default DataImportSection;
