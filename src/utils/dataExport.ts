@@ -88,9 +88,16 @@ export const exportCompetition = (competition: Competition): void => {
   }
 };
 
+// インポート結果の型定義
+export interface ImportResult {
+  success: boolean;
+  error?: string;
+  data?: ExportData;
+}
+
 // ファイルからデータをインポート
-export const importData = (file: File): Promise<ExportData> => {
-  return new Promise((resolve, reject) => {
+export const importData = (file: File): Promise<ImportResult> => {
+  return new Promise((resolve) => {
     const reader = new FileReader();
     
     reader.onload = (event) => {
@@ -100,18 +107,18 @@ export const importData = (file: File): Promise<ExportData> => {
         
         // データ形式の検証
         if (!validateImportData(data)) {
-          reject(new Error('無効なデータ形式です'));
+          resolve({ success: false, error: '無効なデータ形式です' });
           return;
         }
         
-        resolve(data);
+        resolve({ success: true, data });
       } catch (error) {
-        reject(new Error('ファイルの読み込みに失敗しました'));
+        resolve({ success: false, error: 'ファイルの読み込みに失敗しました' });
       }
     };
     
     reader.onerror = () => {
-      reject(new Error('ファイルの読み込みに失敗しました'));
+      resolve({ success: false, error: 'ファイルの読み込みに失敗しました' });
     };
     
     reader.readAsText(file);

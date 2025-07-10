@@ -26,11 +26,25 @@ const DataImportSection: React.FC<DataImportSectionProps> = React.memo(({
     }
 
     try {
-      const text = await file.text();
-      const importResult = importData(text);
+      const importResult = await importData(file);
       
-      if (importResult.success) {
-        onStatusUpdate('✅ インポートが完了しました！');
+      if (importResult.success && importResult.data) {
+        // インポートしたデータをStorageManagerに保存
+        if (importResult.data.competitions) {
+          // 全データの場合
+          for (const competition of importResult.data.competitions) {
+            storageManager.saveCompetitionToHistory(competition);
+          }
+          onStatusUpdate(`✅ ${importResult.data.competitions.length}件の大会データをインポートしました！`);
+        } else if (importResult.data.competition) {
+          // 個別大会データの場合
+          storageManager.saveCompetitionToHistory(importResult.data.competition);
+          onStatusUpdate('✅ 大会データをインポートしました！');
+        } else {
+          onStatusUpdate('❌ インポート可能なデータが見つかりませんでした');
+          return;
+        }
+        
         // ページリロードして最新状態を反映
         setTimeout(() => {
           window.location.reload();
