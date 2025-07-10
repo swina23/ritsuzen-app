@@ -7,6 +7,7 @@ import { storageManager } from '../../utils/StorageManager';
 import { ParticipantMaster } from '../../types';
 import { formatRank } from '../../utils/formatters';
 import { sortMastersByUsage } from '../../utils/arrayUtils';
+import { formatJapaneseDate } from '../../utils/dateUtils';
 
 interface ParticipantMasterSectionProps {
   onStatusUpdate: (message: string) => void;
@@ -71,7 +72,7 @@ const ParticipantMasterSection: React.FC<ParticipantMasterSectionProps> = ({
                       <span className="master-rank">({formatRank(master.rank)})</span>
                       <span className="master-usage">使用回数: {master.usageCount}</span>
                       <span className="master-last-used">
-                        最終使用: {new Date(master.lastUsed).toLocaleDateString('ja-JP')}
+                        最終使用: {formatJapaneseDate(master.lastUsed)}
                       </span>
                       {!master.isActive && <span className="inactive-badge">無効</span>}
                     </div>

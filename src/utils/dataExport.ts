@@ -1,6 +1,7 @@
 import { Competition } from '../types';
 import { storageManager } from './StorageManager';
 import { formatRank } from './formatters';
+import { getTodayJapaneseDate } from './dateUtils';
 
 export interface ExportData {
   version: string;
@@ -40,7 +41,7 @@ export const exportAllData = (): void => {
     
     const link = document.createElement('a');
     link.href = url;
-    link.download = `ritsuzen-all-data-${new Date().toISOString().split('T')[0]}.json`;
+    link.download = `ritsuzen-all-data-${getTodayJapaneseDate()}.json`;
     link.style.display = 'none';
     
     document.body.appendChild(link);

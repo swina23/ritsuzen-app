@@ -5,6 +5,7 @@
 
 import { Competition, ParticipantMaster } from '../types';
 import { logStorageError } from './errorUtils';
+import { formatJapaneseDateTime, getTodayJapaneseDate } from './dateUtils';
 
 export interface StorageData {
   currentCompetition: Competition | null;
@@ -308,7 +309,7 @@ export class StorageManager {
       
       this.downloadAsFile(
         JSON.stringify(exportData, null, 2),
-        `参加者マスター_${new Date().toISOString().split('T')[0]}.json`,
+        `参加者マスター_${getTodayJapaneseDate()}.json`,
         'application/json'
       );
     } catch (error) {
@@ -334,7 +335,7 @@ export class StorageManager {
         size: `${sizeKB} KB`,
         totalSize: `${sizeKB} KB`,
         itemCount: data.competitions.length,
-        lastUpdated: data.lastUpdated
+        lastUpdated: formatJapaneseDateTime(data.lastUpdated)
       };
     } catch (error) {
       return {
