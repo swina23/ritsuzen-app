@@ -218,6 +218,72 @@ export const exportToExcelWithBorders = async (data: ExcelExportData): Promise<v
     }
   });
   
+  // 表の最終行を記録（罫線の範囲を制限するため）
+  const tableLastRow = worksheet.lastRow?.number || headerRowNumber;
+  
+  // 順位情報を表の下に追加
+  // 空行を2行追加
+  worksheet.addRow([]);
+  worksheet.addRow([]);
+  
+  // 同点を考慮した順位取得関数（1位、2位、3位の全員を取得）
+  const getRankingWithTies = (records: ParticipantRecord[], rankField: 'rank' | 'rankWithHandicap') => {
+    const rankingInfo: { rank: number; name: string }[] = [];
+    
+    // 1位、2位、3位の人を全て取得
+    records.forEach(record => {
+      const participant = participants.find(p => p.id === record.participantId);
+      if (participant && record[rankField] >= 1 && record[rankField] <= 3) {
+        rankingInfo.push({ rank: record[rankField], name: participant.name });
+      }
+    });
+    
+    // 順位でソート
+    rankingInfo.sort((a, b) => a.rank - b.rank);
+    
+    return rankingInfo;
+  };
+  
+  // 順位文字列を作成する関数（同順位の場合は2人目以降は順位記号を省略）
+  const createRankingText = (rankingInfo: { rank: number; name: string }[]) => {
+    const result: string[] = [];
+    let lastRank: number | null = null;
+    
+    rankingInfo.forEach(info => {
+      if (info.rank !== lastRank) {
+        // 新しい順位なので順位記号を付ける
+        const rankSymbol = ['①', '②', '③'][info.rank - 1] || `${info.rank}位`;
+        result.push(`${rankSymbol}${info.name}さん`);
+        lastRank = info.rank;
+      } else {
+        // 同じ順位なので順位記号を省略
+        result.push(`${info.name}さん`);
+      }
+    });
+    
+    return result.join('、');
+  };
+  
+  // 調整前順位の文字列を作成
+  const beforeHandicapRanking = getRankingWithTies(sortedRecords, 'rank');
+  if (beforeHandicapRanking.length > 0) {
+    const rankText = `ハンディ換算前の順位は、${createRankingText(beforeHandicapRanking)}`;
+    const rankRow = worksheet.addRow([rankText]);
+    rankRow.getCell(1).font = { size: 11 };
+    rankRow.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
+  }
+  
+  // ハンデ調整後順位の文字列を作成（ハンデ有効時のみ）
+  if (competition.handicapEnabled) {
+    const afterHandicapRanking = getRankingWithTies(sortedRecords, 'rankWithHandicap');
+    if (afterHandicapRanking.length > 0) {
+      const handicapText = `ハンディ換算後の順位は、${createRankingText(afterHandicapRanking)}`;
+      const handicapRow = worksheet.addRow([handicapText]);
+      handicapRow.getCell(1).font = { size: 11 };
+      handicapRow.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
+    }
+  }
+  
   // 列幅の設定（動的生成）
   const colWidths = [12, 6]; // 参加者: 12, 段位: 6
   
@@ -237,13 +303,12 @@ export const exportToExcelWithBorders = async (data: ExcelExportData): Promise<v
     worksheet.getColumn(index + 1).width = width;
   });
 
-  // 罫線の強化設定
-  const lastRow = worksheet.lastRow?.number || headerRowNumber;
+  // 罫線の強化設定（表の最終行まで）
   const lastCol = colWidths.length;
   
-  // 1. 表全体の外枠を太線にする
+  // 1. 表全体の外枠を太線にする（tableLastRowまで）
   try {
-    if (lastRow >= headerRowNumber) {
+    if (tableLastRow >= headerRowNumber) {
       // 上辺
       for (let col = 1; col <= lastCol; col++) {
         const cell = worksheet.getCell(headerRowNumber, col);
@@ -255,7 +320,7 @@ export const exportToExcelWithBorders = async (data: ExcelExportData): Promise<v
       
       // 下辺
       for (let col = 1; col <= lastCol; col++) {
-        const cell = worksheet.getCell(lastRow, col);
+        const cell = worksheet.getCell(tableLastRow, col);
         cell.border = {
           ...cell.border,
           bottom: { style: 'thick' }
@@ -263,7 +328,7 @@ export const exportToExcelWithBorders = async (data: ExcelExportData): Promise<v
       }
       
       // 左辺
-      for (let row = headerRowNumber; row <= lastRow; row++) {
+      for (let row = headerRowNumber; row <= tableLastRow; row++) {
         const cell = worksheet.getCell(row, 1);
         cell.border = {
           ...cell.border,
@@ -272,7 +337,7 @@ export const exportToExcelWithBorders = async (data: ExcelExportData): Promise<v
       }
       
       // 右辺
-      for (let row = headerRowNumber; row <= lastRow; row++) {
+      for (let row = headerRowNumber; row <= tableLastRow; row++) {
         const cell = worksheet.getCell(row, lastCol);
         cell.border = {
           ...cell.border,
@@ -315,8 +380,8 @@ export const exportToExcelWithBorders = async (data: ExcelExportData): Promise<v
   groups.push({ start: summaryStart, end: lastCol });
   
   groups.forEach(group => {
-    // 各グループの縦線を太線にする
-    for (let row = headerRowNumber; row <= lastRow; row++) {
+    // 各グループの縦線を太線にする（tableLastRowまで）
+    for (let row = headerRowNumber; row <= tableLastRow; row++) {
       try {
         // 左辺
         const leftCell = worksheet.getCell(row, group.start);
