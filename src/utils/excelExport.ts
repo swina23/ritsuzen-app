@@ -116,8 +116,11 @@ export const exportToExcelWithBorders = async (data: ExcelExportData): Promise<v
       formatRank(participant.rank)
     ];
     
+    // 皆中（4射全て的中）した立を記録
+    const perfectRounds: number[] = [];
+    
     // 各射の結果を追加
-    record.rounds.forEach((round) => {
+    record.rounds.forEach((round, roundIndex) => {
       round.shots.forEach(shot => {
         if (shot.hit === null) {
           row.push('-');
@@ -126,6 +129,11 @@ export const exportToExcelWithBorders = async (data: ExcelExportData): Promise<v
         }
       });
       row.push(round.hits);
+      
+      // 皆中（4射全て的中）の場合は記録
+      if (round.hits === 4) {
+        perfectRounds.push(roundIndex);
+      }
     });
     
     // 実際に射た矢数を計算
@@ -161,6 +169,53 @@ export const exportToExcelWithBorders = async (data: ExcelExportData): Promise<v
       };
       cell.alignment = { horizontal: 'center', vertical: 'middle' };
     });
+    
+    // 皆中（4射全て的中）のセルをハイライト
+    perfectRounds.forEach(roundIndex => {
+      // 各立の開始列を計算（参加者名:1, 段位:1, 各立5列（4射+1計））
+      const baseCol = 3 + (roundIndex * 5); // 3列目から開始
+      for (let i = 0; i < 4; i++) {
+        const cell = dataRow.getCell(baseCol + i);
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFFFFF00' } // 黄色
+        };
+      }
+    });
+    
+    // 調整前順位1-3位のハイライト
+    if (record.rank >= 1 && record.rank <= 3) {
+      // 的中数のセルをハイライト
+      const totalHitsCol = 3 + (competition.roundsCount * 5); // 的中数の列
+      const totalHitsCell = dataRow.getCell(totalHitsCol);
+      totalHitsCell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFFFFF00' } // 黄色
+      };
+      
+      // 調整前順位のセルをハイライト
+      const rankCol = totalHitsCol + 3; // 的中数から3列後（矢数、的中率の次）
+      const rankCell = dataRow.getCell(rankCol);
+      rankCell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFFFFF00' } // 黄色
+      };
+    }
+    
+    // ハンデ調整後順位1-3位のハイライト
+    if (competition.handicapEnabled && record.rankWithHandicap >= 1 && record.rankWithHandicap <= 3) {
+      const baseCol = 3 + (competition.roundsCount * 5);
+      const handicapRankCol = baseCol + 6; // 的中、矢数、的中率、調整前順位、ハンデ、調整後的中の次
+      const handicapRankCell = dataRow.getCell(handicapRankCol);
+      handicapRankCell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFFFFF00' } // 黄色
+      };
+    }
   });
   
   // 列幅の設定（動的生成）
