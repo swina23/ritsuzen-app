@@ -64,6 +64,7 @@ const Results: React.FC = () => {
         <p>開催日: {state.competition.date}</p>
         <p>参加者数: {state.competition.participants.length}名</p>
         <p>ハンデ機能: {state.competition.handicapEnabled ? '有効' : '無効'}</p>
+        <p className="sort-notice">※ 結果は成績順にソートしています</p>
       </div>
 
       <div className="results-table">

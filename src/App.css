@@ -48,6 +48,12 @@
   color: #388e3c;
 }
 
+.sort-notice {
+  color: #f44336;
+  font-size: 12px;
+  margin-top: 5px;
+}
+
 .app-nav {
   display: flex;
   justify-content: center;
@@ -1005,10 +1011,9 @@
 
 /* Data Manager */
 .data-manager {
-  width: 100%;
-  max-width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
   box-sizing: border-box;
-  overflow-x: hidden;
 }
 
 .data-manager h2 {
