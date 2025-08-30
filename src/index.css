@@ -24,12 +24,15 @@ a:hover {
 
 body {
   margin: 0;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
   min-width: 320px;
   min-height: 100vh;
   padding-top: 20px;
+}
+
+#root {
+  display: flex;
+  justify-content: center;
+  width: 100%;
 }
 
 h1 {
