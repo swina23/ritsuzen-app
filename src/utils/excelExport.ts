@@ -184,8 +184,8 @@ export const exportToExcelWithBorders = async (data: ExcelExportData): Promise<v
       }
     });
     
-    // 調整前順位1-3位のハイライト
-    if (record.rank >= 1 && record.rank <= 3) {
+    // 的中10中以上のハイライト
+    if (record.totalHits >= 10) {
       // 的中数のセルをハイライト
       const totalHitsCol = 3 + (competition.roundsCount * 5); // 的中数の列
       const totalHitsCell = dataRow.getCell(totalHitsCol);
@@ -194,8 +194,12 @@ export const exportToExcelWithBorders = async (data: ExcelExportData): Promise<v
         pattern: 'solid',
         fgColor: { argb: 'FFFFFF00' } // 黄色
       };
-      
+    }
+    
+    // 調整前順位1-3位のハイライト
+    if (record.rank >= 1 && record.rank <= 3) {
       // 調整前順位のセルをハイライト
+      const totalHitsCol = 3 + (competition.roundsCount * 5); // 的中数の列
       const rankCol = totalHitsCol + 3; // 的中数から3列後（矢数、的中率の次）
       const rankCell = dataRow.getCell(rankCol);
       rankCell.fill = {
