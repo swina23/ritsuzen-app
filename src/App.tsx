@@ -90,7 +90,7 @@ const AppContent: React.FC = () => {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>立禅の会記録アプリ</h1>
+        <h1>射会記録アプリ</h1>
         {state.competition && (
           <div className="competition-status">
             <span>{state.competition.name}</span>
