@@ -1401,3 +1401,345 @@
     justify-content: flex-end;
   }
 }
+
+/* グループ分け機能のスタイル */
+.grouping-section {
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 30px;
+}
+
+.grouping-section h3 {
+  margin: 0 0 15px 0;
+  color: #2c3e50;
+}
+
+.grouping-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.grouping-input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.grouping-input label {
+  font-weight: bold;
+  color: #555;
+}
+
+.grouping-input select {
+  padding: 5px 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.grouping-btn {
+  padding: 8px 16px;
+  background-color: #2196f3;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.2s;
+}
+
+.grouping-btn:hover:not(:disabled) {
+  background-color: #1976d2;
+}
+
+.grouping-btn:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.clear-grouping-btn {
+  padding: 8px 16px;
+  background-color: #999;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.clear-grouping-btn:hover:not(:disabled) {
+  background-color: #777;
+}
+
+.clear-grouping-btn:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.grouping-info {
+  color: #666;
+  font-size: 14px;
+  margin-top: 10px;
+}
+
+/* グループヘッダー */
+.group-header {
+  background-color: #f5f5f5;
+  font-weight: bold;
+  padding: 10px;
+  margin-top: 10px;
+  border-radius: 4px;
+  list-style: none;
+}
+
+.group-header.group-1 {
+  background-color: #E3F2FD;
+  color: #1565C0;
+}
+
+.group-header.group-2 {
+  background-color: #E8F5E9;
+  color: #2E7D32;
+}
+
+.group-header.group-3 {
+  background-color: #FFF3E0;
+  color: #E65100;
+}
+
+.group-header.group-4 {
+  background-color: #F3E5F5;
+  color: #6A1B9A;
+}
+
+.group-header.group-5 {
+  background-color: #FFEBEE;
+  color: #C62828;
+}
+
+/* 参加者リストのグループ色分け */
+.participant-item.group-1 {
+  border-left: 4px solid #2196F3;
+  background-color: #E3F2FD;
+}
+
+.participant-item.group-2 {
+  border-left: 4px solid #4CAF50;
+  background-color: #E8F5E9;
+}
+
+.participant-item.group-3 {
+  border-left: 4px solid #FF9800;
+  background-color: #FFF3E0;
+}
+
+.participant-item.group-4 {
+  border-left: 4px solid #9C27B0;
+  background-color: #F3E5F5;
+}
+
+.participant-item.group-5 {
+  border-left: 4px solid #F44336;
+  background-color: #FFEBEE;
+}
+
+/* 記録入力画面: 射順情報 */
+.shooting-info {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 15px;
+  flex-wrap: wrap;
+}
+
+.shooting-order, .current-shooter {
+  flex: 1;
+  min-width: 200px;
+  padding: 10px;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.shooting-order {
+  background: #E3F2FD;
+  border-left: 4px solid #2196F3;
+}
+
+.current-shooter {
+  background: #E8F5E9;
+  border-left: 4px solid #4CAF50;
+}
+
+.info-label {
+  font-weight: bold;
+  margin-bottom: 5px;
+  color: #555;
+}
+
+.group-order {
+  font-size: 13px;
+  color: #666;
+  margin-top: 3px;
+}
+
+.next-shooter-info {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.group-badge {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+  color: white;
+}
+
+.group-badge.group-1 { background-color: #2196F3; }
+.group-badge.group-2 { background-color: #4CAF50; }
+.group-badge.group-3 { background-color: #FF9800; }
+.group-badge.group-4 { background-color: #9C27B0; }
+.group-badge.group-5 { background-color: #F44336; }
+
+.shooter-name {
+  font-weight: bold;
+  color: #2c3e50;
+}
+
+.shot-number {
+  color: #666;
+  font-size: 13px;
+}
+
+/* 記録入力テーブル: グループヘッダー行 */
+.score-table .group-header-row {
+  background-color: #f5f5f5;
+  font-weight: bold;
+}
+
+.score-table .group-header-row.group-1 {
+  background-color: #E3F2FD;
+  color: #1565C0;
+}
+
+.score-table .group-header-row.group-2 {
+  background-color: #E8F5E9;
+  color: #2E7D32;
+}
+
+.score-table .group-header-row.group-3 {
+  background-color: #FFF3E0;
+  color: #E65100;
+}
+
+.score-table .group-header-row.group-4 {
+  background-color: #F3E5F5;
+  color: #6A1B9A;
+}
+
+.score-table .group-header-row.group-5 {
+  background-color: #FFEBEE;
+  color: #C62828;
+}
+
+/* 記録入力テーブル: グループごとの行色分け */
+.score-table tr.group-1-row {
+  border-left: 4px solid #2196F3;
+}
+
+.score-table tr.group-2-row {
+  border-left: 4px solid #4CAF50;
+}
+
+.score-table tr.group-3-row {
+  border-left: 4px solid #FF9800;
+}
+
+.score-table tr.group-4-row {
+  border-left: 4px solid #9C27B0;
+}
+
+.score-table tr.group-5-row {
+  border-left: 4px solid #F44336;
+}
+
+/* 次の射手ハイライト */
+.score-table tr.next-shooter {
+  background-color: #FFF9C4;
+  font-weight: bold;
+}
+
+.score-table tr.next-shooter.group-1-row {
+  background-color: #E3F2FD;
+}
+
+.score-table tr.next-shooter.group-2-row {
+  background-color: #E8F5E9;
+}
+
+.score-table tr.next-shooter.group-3-row {
+  background-color: #FFF3E0;
+}
+
+.score-table tr.next-shooter.group-4-row {
+  background-color: #F3E5F5;
+}
+
+.score-table tr.next-shooter.group-5-row {
+  background-color: #FFEBEE;
+}
+
+/* 次の射ボタンハイライト */
+.shot-btn.next-shot {
+  border: 3px solid #FF9800;
+  box-shadow: 0 0 10px rgba(255, 152, 0, 0.5);
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(255, 152, 0, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(255, 152, 0, 0.8);
+  }
+}
+
+/* グループ移動ボタン */
+.move-btn.group-up-btn,
+.move-btn.group-down-btn {
+  background-color: #FF9800;
+}
+
+.move-btn.group-up-btn:hover:not(:disabled),
+.move-btn.group-down-btn:hover:not(:disabled) {
+  background-color: #F57C00;
+}
+
+/* ドラッグ&ドロップスタイル */
+.drag-handle {
+  cursor: grab;
+  font-size: 16px;
+  color: #999;
+  margin-right: 8px;
+  user-select: none;
+}
+
+.participant-item.dragging {
+  opacity: 0.5;
+  cursor: grabbing;
+}
+
+.participant-item {
+  cursor: grab;
+  transition: background-color 0.2s, transform 0.2s;
+}
+
+.participant-item:active {
+  cursor: grabbing;
+}

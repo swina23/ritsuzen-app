@@ -3,7 +3,7 @@ export interface Participant {
   name: string;
   rank: number; // 段位
   order: number; // 表示順序
-  groupId?: string;
+  group?: number; // グループ番号 (1, 2, 3...)
 }
 
 export interface Shot {
@@ -34,6 +34,7 @@ export interface Competition {
   type: '20' | '50';
   status: 'created' | 'inProgress' | 'finished';
   handicapEnabled: boolean;
+  enableRotation: boolean; // 射順ローテーション有効化
   roundsCount: number; // 立数 (5, 10, 15, 20, 25)
   participants: Participant[];
   records: ParticipantRecord[];
