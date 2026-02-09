@@ -5,25 +5,34 @@ import { storageManager } from '../utils/StorageManager';
 import { generateCompetitionId, generateParticipantId } from '../utils/idGeneration';
 import { DEFAULT_ROUNDS_COUNT } from '../utils/constants';
 import { moveParticipantUp as moveUp, moveParticipantDown as moveDown } from '../utils/arrayUtils';
+import { applyAutoGrouping as autoGroup, moveParticipantToGroup as moveToGroup, clearGrouping as clearGroup } from '../utils/grouping';
 
 interface CompetitionContextType {
   state: CompetitionState;
-  createCompetition: (name: string, date: string, handicapEnabled: boolean, roundsCount?: number) => void;
+  createCompetition: (name: string, date: string, handicapEnabled: boolean, enableRotation: boolean, roundsCount?: number) => void;
   addParticipant: (participant: Omit<Participant, 'id' | 'order'>) => void;
   removeParticipant: (participantId: string) => void;
   moveParticipantUp: (participantId: string) => void;
   moveParticipantDown: (participantId: string) => void;
+  reorderParticipants: (participants: Participant[]) => void;
+  applyAutoGrouping: (groupSize: number) => void;
+  moveParticipantToGroup: (participantId: string, direction: 'up' | 'down') => void;
+  clearGrouping: () => void;
   updateShot: (participantId: string, roundNumber: number, shotIndex: number, hit: boolean | null) => void;
   finishCompetition: () => void;
   resetCompetition: () => void;
 }
 
 type CompetitionAction =
-  | { type: 'CREATE_COMPETITION'; payload: { name: string; date: string; handicapEnabled: boolean; roundsCount?: number } }
+  | { type: 'CREATE_COMPETITION'; payload: { name: string; date: string; handicapEnabled: boolean; enableRotation: boolean; roundsCount?: number } }
   | { type: 'ADD_PARTICIPANT'; payload: Omit<Participant, 'id' | 'order'> }
   | { type: 'REMOVE_PARTICIPANT'; payload: string }
   | { type: 'MOVE_PARTICIPANT_UP'; payload: string }
   | { type: 'MOVE_PARTICIPANT_DOWN'; payload: string }
+  | { type: 'REORDER_PARTICIPANTS'; payload: Participant[] }
+  | { type: 'APPLY_AUTO_GROUPING'; payload: number }
+  | { type: 'MOVE_PARTICIPANT_TO_GROUP'; payload: { participantId: string; direction: 'up' | 'down' } }
+  | { type: 'CLEAR_GROUPING' }
   | { type: 'UPDATE_SHOT'; payload: { participantId: string; roundNumber: number; shotIndex: number; hit: boolean | null } }
   | { type: 'FINISH_COMPETITION' }
   | { type: 'RESET_COMPETITION' }
@@ -40,7 +49,7 @@ const CompetitionContext = createContext<CompetitionContextType | undefined>(und
 const competitionReducer = (state: CompetitionState, action: CompetitionAction): CompetitionState => {
   switch (action.type) {
     case 'CREATE_COMPETITION': {
-      const { name, date, handicapEnabled, roundsCount = DEFAULT_ROUNDS_COUNT } = action.payload;
+      const { name, date, handicapEnabled, enableRotation, roundsCount = DEFAULT_ROUNDS_COUNT } = action.payload;
       const competition: Competition = {
         id: generateCompetitionId(),
         name,
@@ -48,6 +57,7 @@ const competitionReducer = (state: CompetitionState, action: CompetitionAction):
         type: '20',
         status: 'created',
         handicapEnabled,
+        enableRotation,
         roundsCount,
         participants: [],
         records: [],
@@ -116,15 +126,81 @@ const competitionReducer = (state: CompetitionState, action: CompetitionAction):
 
     case 'MOVE_PARTICIPANT_DOWN': {
       if (!state.competition) return state;
-      
+
       const participantId = action.payload;
       const reorderedParticipants = moveDown(state.competition.participants, participantId);
-      
+
       return {
         ...state,
         competition: {
           ...state.competition,
           participants: reorderedParticipants,
+          updatedAt: new Date().toISOString()
+        }
+      };
+    }
+
+    case 'REORDER_PARTICIPANTS': {
+      if (!state.competition) return state;
+
+      // 新しい順序でorderフィールドを更新
+      const reorderedParticipants = action.payload.map((p, index) => ({
+        ...p,
+        order: index + 1
+      }));
+
+      return {
+        ...state,
+        competition: {
+          ...state.competition,
+          participants: reorderedParticipants,
+          updatedAt: new Date().toISOString()
+        }
+      };
+    }
+
+    case 'APPLY_AUTO_GROUPING': {
+      if (!state.competition) return state;
+
+      const groupSize = action.payload;
+      const groupedParticipants = autoGroup(state.competition.participants, groupSize);
+
+      return {
+        ...state,
+        competition: {
+          ...state.competition,
+          participants: groupedParticipants,
+          updatedAt: new Date().toISOString()
+        }
+      };
+    }
+
+    case 'MOVE_PARTICIPANT_TO_GROUP': {
+      if (!state.competition) return state;
+
+      const { participantId, direction } = action.payload;
+      const regroupedParticipants = moveToGroup(state.competition.participants, participantId, direction);
+
+      return {
+        ...state,
+        competition: {
+          ...state.competition,
+          participants: regroupedParticipants,
+          updatedAt: new Date().toISOString()
+        }
+      };
+    }
+
+    case 'CLEAR_GROUPING': {
+      if (!state.competition) return state;
+
+      const clearedParticipants = clearGroup(state.competition.participants);
+
+      return {
+        ...state,
+        competition: {
+          ...state.competition,
+          participants: clearedParticipants,
           updatedAt: new Date().toISOString()
         }
       };
@@ -203,7 +279,8 @@ const competitionReducer = (state: CompetitionState, action: CompetitionAction):
         competition: {
           ...action.payload,
           participants: migratedParticipants,
-          roundsCount: action.payload.roundsCount !== undefined ? action.payload.roundsCount : DEFAULT_ROUNDS_COUNT
+          roundsCount: action.payload.roundsCount !== undefined ? action.payload.roundsCount : DEFAULT_ROUNDS_COUNT,
+          enableRotation: action.payload.enableRotation !== undefined ? action.payload.enableRotation : true
         }
       };
     }
@@ -231,8 +308,8 @@ export const CompetitionProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
   }, [state.competition]);
 
-  const createCompetition = (name: string, date: string, handicapEnabled: boolean, roundsCount: number = DEFAULT_ROUNDS_COUNT) => {
-    dispatch({ type: 'CREATE_COMPETITION', payload: { name, date, handicapEnabled, roundsCount } });
+  const createCompetition = (name: string, date: string, handicapEnabled: boolean, enableRotation: boolean, roundsCount: number = DEFAULT_ROUNDS_COUNT) => {
+    dispatch({ type: 'CREATE_COMPETITION', payload: { name, date, handicapEnabled, enableRotation, roundsCount } });
   };
 
   const addParticipant = (participant: Omit<Participant, 'id' | 'order'>) => {
@@ -249,6 +326,22 @@ export const CompetitionProvider: React.FC<{ children: ReactNode }> = ({ childre
 
   const moveParticipantDown = (participantId: string) => {
     dispatch({ type: 'MOVE_PARTICIPANT_DOWN', payload: participantId });
+  };
+
+  const reorderParticipants = (participants: Participant[]) => {
+    dispatch({ type: 'REORDER_PARTICIPANTS', payload: participants });
+  };
+
+  const applyAutoGrouping = (groupSize: number) => {
+    dispatch({ type: 'APPLY_AUTO_GROUPING', payload: groupSize });
+  };
+
+  const moveParticipantToGroup = (participantId: string, direction: 'up' | 'down') => {
+    dispatch({ type: 'MOVE_PARTICIPANT_TO_GROUP', payload: { participantId, direction } });
+  };
+
+  const clearGrouping = () => {
+    dispatch({ type: 'CLEAR_GROUPING' });
   };
 
   const updateShot = (participantId: string, roundNumber: number, shotIndex: number, hit: boolean | null) => {
@@ -286,6 +379,10 @@ export const CompetitionProvider: React.FC<{ children: ReactNode }> = ({ childre
       removeParticipant,
       moveParticipantUp,
       moveParticipantDown,
+      reorderParticipants,
+      applyAutoGrouping,
+      moveParticipantToGroup,
+      clearGrouping,
       updateShot,
       finishCompetition,
       resetCompetition

@@ -7,6 +7,7 @@ const CompetitionSetup: React.FC = () => {
   const [name, setName] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [handicapEnabled, setHandicapEnabled] = useState(true);
+  const [enableRotation, setEnableRotation] = useState(true);
   const [roundsCount, setRoundsCount] = useState(5);
 
   const hasActiveCompetition = state.competition !== null;
@@ -14,7 +15,7 @@ const CompetitionSetup: React.FC = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!hasActiveCompetition) {
-      createCompetition(name, date, handicapEnabled, roundsCount);
+      createCompetition(name, date, handicapEnabled, enableRotation, roundsCount);
     }
   };
 
@@ -83,9 +84,21 @@ const CompetitionSetup: React.FC = () => {
             ハンデ機能を有効にする
           </label>
         </div>
-        
-        <button 
-          type="submit" 
+
+        <div className="form-group">
+          <label>
+            <input
+              type="checkbox"
+              checked={enableRotation}
+              onChange={(e) => setEnableRotation(e.target.checked)}
+              disabled={hasActiveCompetition}
+            />
+            射順ローテーションを有効にする
+          </label>
+        </div>
+
+        <button
+          type="submit"
           className="create-btn"
           disabled={hasActiveCompetition}
           title={hasActiveCompetition ? '現在の大会をリセットしてから新規作成してください' : ''}
