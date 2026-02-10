@@ -112,32 +112,6 @@ const ScoreInput: React.FC = () => {
         ))}
       </div>
 
-      {/* 射順情報 */}
-      {groupInfo.hasGroups && shootingOrders.length > 0 && (
-        <div className="shooting-info">
-          <div className="shooting-order">
-            <div className="info-label">射順:</div>
-            {shootingOrders.map(({ groupNumber, order }) => (
-              <div key={groupNumber} className="group-order">
-                グループ{groupNumber}: {order.map(p => p.name.substring(0, 2)).join(' → ')}
-              </div>
-            ))}
-          </div>
-          {nextShot && (
-            <div className="current-shooter">
-              <div className="info-label">次の射手:</div>
-              <div className="next-shooter-info">
-                {nextShot.group && <span className={`group-badge group-${nextShot.group}`}>グループ{nextShot.group}</span>}
-                <span className="shooter-name">
-                  {sortedParticipants.find(p => p.id === nextShot.participantId)?.name}
-                </span>
-                <span className="shot-number">({nextShot.shotIndex + 1}射目)</span>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
       <div className="score-table">
         <table>
           <thead>

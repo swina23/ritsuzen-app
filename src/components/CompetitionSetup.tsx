@@ -93,7 +93,7 @@ const CompetitionSetup: React.FC = () => {
               onChange={(e) => setEnableRotation(e.target.checked)}
               disabled={hasActiveCompetition}
             />
-            射順ローテーションを有効にする
+            立順ローテーションを有効にする
           </label>
         </div>
 
