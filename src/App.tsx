@@ -128,7 +128,8 @@ const AppContent: React.FC = () => {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>射会記録アプリ <span className="app-version">v{VERSION}</span></h1>
+        <h1>射会記録アプリ</h1>
+        <span className="app-version">v{VERSION}</span>
         {state.competition && (
           <div className="competition-status">
             <span>{state.competition.name}</span>
