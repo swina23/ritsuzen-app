@@ -12,8 +12,8 @@ import ConfirmModal from './components/ConfirmModal';
 import { createErrorReport, saveErrorReport } from './utils/errorUtils';
 import './App.css';
 
-// package.jsonからバージョンを取得
-const VERSION = '1.1.0';
+declare const __APP_VERSION__: string;
+const VERSION = __APP_VERSION__;
 
 type AppView = 'setup' | 'participants' | 'scoring' | 'results' | 'data';
 
