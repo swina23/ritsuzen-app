@@ -8,6 +8,7 @@ import DataManager from './components/DataManager';
 import ErrorBoundary from './components/ErrorBoundary';
 import CompetitionErrorBoundary from './components/error-boundaries/CompetitionErrorBoundary';
 import DataErrorBoundary from './components/error-boundaries/DataErrorBoundary';
+import ConfirmModal from './components/ConfirmModal';
 import { createErrorReport, saveErrorReport } from './utils/errorUtils';
 import './App.css';
 
@@ -16,9 +17,46 @@ const VERSION = '1.1.0';
 
 type AppView = 'setup' | 'participants' | 'scoring' | 'results' | 'data';
 
+type ModalConfig = {
+  title: string;
+  message: string;
+  confirmLabel: string;
+  danger?: boolean;
+  onConfirm: () => void;
+};
+
 const AppContent: React.FC = () => {
   const { state, finishCompetition, resetCompetition } = useCompetition();
   const [currentView, setCurrentView] = useState<AppView>('setup');
+  const [modalConfig, setModalConfig] = useState<ModalConfig | null>(null);
+
+  const showConfirm = (config: ModalConfig) => setModalConfig(config);
+  const closeModal = () => setModalConfig(null);
+
+  const handleFinishCompetition = () => {
+    showConfirm({
+      title: '大会を終了しますか？',
+      message: '・記録の編集ができなくなります\n・参加者の追加・変更ができなくなります\n・大会履歴に保存されます\n\n※終了後は変更できません',
+      confirmLabel: '終了する',
+      onConfirm: () => {
+        finishCompetition();
+        closeModal();
+      },
+    });
+  };
+
+  const handleResetCompetition = () => {
+    showConfirm({
+      title: '現在の大会をリセットしますか？',
+      message: '・現在の大会データが削除されます\n・過去の大会履歴は保持されます\n・大会設定画面に戻ります',
+      confirmLabel: 'リセット',
+      danger: true,
+      onConfirm: () => {
+        resetCompetition();
+        closeModal();
+      },
+    });
+  };
 
   // エラーハンドラー
   const handleError = (error: Error, errorInfo: any) => {
@@ -147,21 +185,33 @@ const AppContent: React.FC = () => {
       {state.competition && currentView !== 'participants' && (
         <div className="app-actions">
           {state.competition.status !== 'finished' && (
-            <button 
-              onClick={finishCompetition}
+            <button
+              onClick={handleFinishCompetition}
               className="finish-btn"
               disabled={!canProceedToScoring}
             >
               大会終了
             </button>
           )}
-          <button 
-            onClick={resetCompetition}
+          <button
+            onClick={handleResetCompetition}
             className="reset-btn"
           >
             リセット
           </button>
         </div>
+      )}
+
+      {modalConfig && (
+        <ConfirmModal
+          isOpen={true}
+          title={modalConfig.title}
+          message={modalConfig.message}
+          confirmLabel={modalConfig.confirmLabel}
+          danger={modalConfig.danger}
+          onConfirm={modalConfig.onConfirm}
+          onCancel={closeModal}
+        />
       )}
 
       <footer className="app-footer">

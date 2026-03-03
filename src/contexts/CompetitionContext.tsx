@@ -349,26 +349,22 @@ export const CompetitionProvider: React.FC<{ children: ReactNode }> = ({ childre
   };
 
   const finishCompetition = () => {
-    if (window.confirm('🏁 大会を終了しますか？\n\n・記録の編集ができなくなります\n・参加者の追加・変更ができなくなります\n・大会履歴に保存されます\n\n※終了後は変更できません')) {
-      if (state.competition) {
-        // 大会終了時に履歴に保存
-        const finishedCompetition = {
-          ...state.competition,
-          status: 'finished' as const,
-          updatedAt: new Date().toISOString()
-        };
-        storageManager.saveCompetitionToHistory(finishedCompetition);
-      }
-      dispatch({ type: 'FINISH_COMPETITION' });
+    if (state.competition) {
+      // 大会終了時に履歴に保存
+      const finishedCompetition = {
+        ...state.competition,
+        status: 'finished' as const,
+        updatedAt: new Date().toISOString()
+      };
+      storageManager.saveCompetitionToHistory(finishedCompetition);
     }
+    dispatch({ type: 'FINISH_COMPETITION' });
   };
 
   const resetCompetition = () => {
-    if (window.confirm('🔄 現在の大会をリセットしますか？\n\n・現在の大会データが削除されます\n・過去の大会履歴は保持されます\n・大会設定画面に戻ります')) {
-      // リセット時にLocalStorageもクリア
-      storageManager.saveCurrentCompetition(null);
-      dispatch({ type: 'RESET_COMPETITION' });
-    }
+    // リセット時にLocalStorageもクリア
+    storageManager.saveCurrentCompetition(null);
+    dispatch({ type: 'RESET_COMPETITION' });
   };
 
   return (

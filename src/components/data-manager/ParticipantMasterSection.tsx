@@ -8,6 +8,7 @@ import { ParticipantMaster } from '../../types';
 import { formatRank } from '../../utils/formatters';
 import { sortMastersByUsage } from '../../utils/arrayUtils';
 import { formatJapaneseDate } from '../../utils/dateUtils';
+import ConfirmModal from '../ConfirmModal';
 
 interface ParticipantMasterSectionProps {
   onStatusUpdate: (message: string) => void;
@@ -18,6 +19,7 @@ const ParticipantMasterSection: React.FC<ParticipantMasterSectionProps> = ({
 }) => {
   const [masters, setMasters] = useState<ParticipantMaster[]>([]);
   const [showMasters, setShowMasters] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   
   // マスター一覧を読み込み
   const loadMasters = () => {
@@ -30,11 +32,15 @@ const ParticipantMasterSection: React.FC<ParticipantMasterSectionProps> = ({
   }, []);
 
   const handleDeleteMaster = (masterId: string, masterName: string) => {
-    if (window.confirm(`「${masterName}」を削除しますか？\n\nこの操作は取り消せません。`)) {
-      storageManager.deleteParticipantMaster(masterId);
-      loadMasters();
-      onStatusUpdate(`✅ 「${masterName}」を削除しました`);
-    }
+    setDeleteTarget({ id: masterId, name: masterName });
+  };
+
+  const confirmDeleteMaster = () => {
+    if (!deleteTarget) return;
+    storageManager.deleteParticipantMaster(deleteTarget.id);
+    loadMasters();
+    onStatusUpdate(`✅ 「${deleteTarget.name}」を削除しました`);
+    setDeleteTarget(null);
   };
 
   const handleToggleMasterActive = (masterId: string, currentActive: boolean) => {
@@ -48,6 +54,15 @@ const ParticipantMasterSection: React.FC<ParticipantMasterSectionProps> = ({
 
   return (
     <div className="masters-section">
+      <ConfirmModal
+        isOpen={deleteTarget !== null}
+        title={`「${deleteTarget?.name}」を削除しますか？`}
+        message="この操作は取り消せません。"
+        confirmLabel="削除する"
+        danger={true}
+        onConfirm={confirmDeleteMaster}
+        onCancel={() => setDeleteTarget(null)}
+      />
       <div className="masters-header">
         <h3>👥 参加者マスター</h3>
         <button 
