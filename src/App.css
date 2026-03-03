@@ -19,6 +19,13 @@
   margin-bottom: 10px;
 }
 
+.app-version {
+  font-size: 12px;
+  font-weight: 400;
+  color: #999;
+  vertical-align: middle;
+}
+
 
 .competition-status {
   display: flex;

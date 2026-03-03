@@ -128,7 +128,7 @@ const AppContent: React.FC = () => {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>射会記録アプリ</h1>
+        <h1>射会記録アプリ <span className="app-version">v{VERSION}</span></h1>
         {state.competition && (
           <div className="competition-status">
             <span>{state.competition.name}</span>
@@ -216,7 +216,7 @@ const AppContent: React.FC = () => {
 
       <footer className="app-footer">
         <p>© 2025 hirosetomohiko All rights reserved.</p>
-        <p className="version">v{VERSION}</p>
+
       </footer>
     </div>
   );
