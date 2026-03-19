@@ -21,6 +21,7 @@ import { ParticipantMaster } from '../types';
 import { sortMastersByUsage, sortParticipantsByOrder, filterByRank } from '../utils/arrayUtils';
 import { getGroupInfo, groupParticipants } from '../utils/grouping';
 import SortableParticipantItem from './SortableParticipantItem';
+import ConfirmModal from './ConfirmModal';
 
 const ParticipantSetup: React.FC = () => {
   const { state, addParticipant, removeParticipant, reorderParticipants, applyAutoGrouping, clearGrouping } = useCompetition();
@@ -32,6 +33,7 @@ const ParticipantSetup: React.FC = () => {
   const [showMasters, setShowMasters] = useState(true);
   const [filterRank, setFilterRank] = useState<number | null>(null);
   const [groupSize, setGroupSize] = useState<number>(5);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -113,6 +115,22 @@ const ParticipantSetup: React.FC = () => {
     loadMasters();
   }, [selectedMasters, addParticipant, state.competition?.status, loadMasters, masters]);
 
+  const handleDeleteMaster = useCallback((masterId: string, masterName: string) => {
+    setDeleteTarget({ id: masterId, name: masterName });
+  }, []);
+
+  const confirmDeleteMaster = useCallback(() => {
+    if (!deleteTarget) return;
+    storageManager.deleteParticipantMaster(deleteTarget.id);
+    setSelectedMasters(prev => {
+      const next = new Set(prev);
+      next.delete(deleteTarget.id);
+      return next;
+    });
+    loadMasters();
+    setDeleteTarget(null);
+  }, [deleteTarget, loadMasters]);
+
   const filteredMasters = useMemo(() => {
     return filterByRank(masters, filterRank);
   }, [masters, filterRank]);
@@ -166,6 +184,15 @@ const ParticipantSetup: React.FC = () => {
 
   return (
     <div className="participant-setup">
+      <ConfirmModal
+        isOpen={deleteTarget !== null}
+        title={`「${deleteTarget?.name}」を削除しますか？`}
+        message="マスターから削除します。進行中の大会には影響しません。"
+        confirmLabel="削除する"
+        danger={true}
+        onConfirm={confirmDeleteMaster}
+        onCancel={() => setDeleteTarget(null)}
+      />
       <h2>参加者登録</h2>
 
       {isFinished && (
@@ -230,6 +257,14 @@ const ParticipantSetup: React.FC = () => {
                         <span className="master-usage">使用回数: {master.usageCount}</span>
                       </span>
                     </label>
+                    <button
+                      type="button"
+                      className="remove-btn"
+                      onClick={() => handleDeleteMaster(master.id, master.name)}
+                      title="マスターから削除"
+                    >
+                      削除
+                    </button>
                   </div>
                 ))}
               </div>
