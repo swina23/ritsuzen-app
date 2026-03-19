@@ -821,6 +821,10 @@
 .master-item {
   border-bottom: 1px solid #dee2e6;
   padding: 10px 15px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .master-item:last-child {
@@ -832,7 +836,8 @@
   align-items: center;
   gap: 10px;
   cursor: pointer;
-  width: 100%;
+  flex: 1;
+  min-width: 0;
 }
 
 .master-checkbox input[type="checkbox"] {
