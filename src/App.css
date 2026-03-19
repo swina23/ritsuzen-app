@@ -383,29 +383,24 @@
 }
 
 .score-table th:nth-child(2),
-.score-table td:nth-child(2) {
-  width: 45px; /* 段位 */
-}
-
 .score-table th:nth-child(3),
 .score-table th:nth-child(4),
 .score-table th:nth-child(5),
-.score-table th:nth-child(6),
+.score-table td:nth-child(2),
 .score-table td:nth-child(3),
 .score-table td:nth-child(4),
-.score-table td:nth-child(5),
-.score-table td:nth-child(6) {
+.score-table td:nth-child(5) {
   width: 50px; /* 1射目〜4射目 */
   padding: 4px;
 }
 
-.score-table th:nth-child(7),
-.score-table td:nth-child(7) {
+.score-table th:nth-child(6),
+.score-table td:nth-child(6) {
   width: 55px; /* 的中計 */
 }
 
-.score-table th:nth-child(8),
-.score-table td:nth-child(8) {
+.score-table th:nth-child(7),
+.score-table td:nth-child(7) {
   width: 50px; /* 総計 */
 }
 

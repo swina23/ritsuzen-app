@@ -1,7 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { useCompetition } from '../contexts/CompetitionContext';
 import { Participant } from '../types';
-import { formatRank } from '../utils/formatters';
 import { getShotDisplay, getShotClass } from '../utils/shotHelpers';
 import { sortParticipantsByOrder } from '../utils/arrayUtils';
 import { getGroupShootingOrders, findNextShot, getShootingOrderForRound } from '../utils/shootingOrder';
@@ -117,7 +116,6 @@ const ScoreInput: React.FC = () => {
           <thead>
             <tr>
               <th>参加者</th>
-              <th>段位</th>
               <th>1射目</th>
               <th>2射目</th>
               <th>3射目</th>
@@ -148,7 +146,7 @@ const ScoreInput: React.FC = () => {
                     return (
                       <React.Fragment key={`group-${groupNum}`}>
                         <tr className={`group-header-row group-${groupNum}`}>
-                          <td colSpan={8}>
+                          <td colSpan={7}>
                             グループ{groupNum} ({groupParticipants.length}人)
                           </td>
                         </tr>
@@ -163,7 +161,6 @@ const ScoreInput: React.FC = () => {
                               className={`${isNextShooter ? 'next-shooter' : ''} group-${groupNum}-row`}
                             >
                               <td>{participant.name}</td>
-                              <td>{formatRank(participant.rank)}</td>
                               {[0, 1, 2, 3].map(shotIndex => {
                                 const isNextShot = nextShot?.participantId === participant.id && nextShot?.shotIndex === shotIndex;
                                 return (
@@ -200,7 +197,6 @@ const ScoreInput: React.FC = () => {
                     className={isNextShooter ? 'next-shooter' : ''}
                   >
                     <td>{participant.name}</td>
-                    <td>{formatRank(participant.rank)}</td>
                     {[0, 1, 2, 3].map(shotIndex => {
                       const isNextShot = nextShot?.participantId === participant.id && nextShot?.shotIndex === shotIndex;
                       return (
