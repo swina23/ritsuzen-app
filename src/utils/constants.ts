@@ -3,7 +3,7 @@
  */
 
 /** 段位の選択肢 */
-export const RANK_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8] as const;
+export const RANK_OPTIONS = [0, 1, 2, 3, 4, 5, 6, 7, 8] as const;
 
 /** 立数の選択肢 */
 export const ROUNDS_OPTIONS = [5, 10, 15, 20, 25] as const;

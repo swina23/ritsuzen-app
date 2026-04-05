@@ -16,6 +16,7 @@ import {
 } from '@dnd-kit/sortable';
 import { useCompetition } from '../contexts/CompetitionContext';
 import { formatRank } from '../utils/formatters';
+import { RANK_OPTIONS } from '../utils/constants';
 import { storageManager } from '../utils/StorageManager';
 import { ParticipantMaster } from '../types';
 import { sortMastersByUsage, sortParticipantsByOrder, filterByRank } from '../utils/arrayUtils';
@@ -226,8 +227,8 @@ const ParticipantSetup: React.FC = () => {
                     disabled={isFinished}
                   >
                     <option value="">全段位</option>
-                    {[1, 2, 3, 4, 5, 6, 7, 8].map(r => (
-                      <option key={r} value={r}>{r === 1 ? '初段' : `${r}段`}</option>
+                    {RANK_OPTIONS.map(r => (
+                      <option key={r} value={r}>{formatRank(r)}</option>
                     ))}
                   </select>
                 </div>
@@ -298,8 +299,8 @@ const ParticipantSetup: React.FC = () => {
               onChange={(e) => setRank(Number(e.target.value))}
               disabled={isFinished}
             >
-              {[1, 2, 3, 4, 5, 6, 7, 8].map(r => (
-                <option key={r} value={r}>{r === 1 ? '初段' : `${r}段`}</option>
+              {RANK_OPTIONS.map(r => (
+                <option key={r} value={r}>{formatRank(r)}</option>
               ))}
             </select>
           </div>
