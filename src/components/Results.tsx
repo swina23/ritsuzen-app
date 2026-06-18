@@ -4,13 +4,18 @@ import { exportToExcelWithBorders, exportToCSV } from '../utils/excelExport';
 import { formatRank } from '../utils/formatters';
 import { getShotDisplay, getShotClass } from '../utils/shotHelpers';
 import { sortRecordsByScore } from '../utils/arrayUtils';
+import { calculateRankings } from '../utils/calculations';
 
 const Results: React.FC = () => {
   const { state } = useCompetition();
 
   const sortedRecords = useMemo(() => {
     if (!state.competition) return [];
-    return sortRecordsByScore(state.competition.records, state.competition.handicapEnabled);
+    // 表示直前に最新ロジックで順位を再計算（保存済みの古い順位を上書き）
+    const rankedRecords = calculateRankings(
+      state.competition.records.map(record => ({ ...record }))
+    );
+    return sortRecordsByScore(rankedRecords, state.competition.handicapEnabled);
   }, [state.competition?.records, state.competition?.handicapEnabled]);
 
   const getDisplayRank = useCallback((record: any): number => {
