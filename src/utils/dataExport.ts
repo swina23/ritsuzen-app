@@ -2,6 +2,7 @@ import { Competition } from '../types';
 import { storageManager } from './StorageManager';
 import { formatRank } from './formatters';
 import { getTodayJapaneseDate } from './dateUtils';
+import { calculateRankings } from './calculations';
 
 export interface ExportData {
   version: string;
@@ -170,9 +171,12 @@ export const exportCompetitionAsCSV = (competition: Competition): void => {
     }
     
     const csvData = [headers];
-    
+
+    // 出力直前に最新ロジックで順位を再計算（履歴データの古い順位を上書き）
+    const rankedRecords = calculateRankings(competition.records.map(record => ({ ...record })));
+
     // 参加者の順番（order）でソート
-    const sortedRecords = [...competition.records].sort((a, b) => {
+    const sortedRecords = [...rankedRecords].sort((a, b) => {
       const participantA = competition.participants.find(p => p.id === a.participantId);
       const participantB = competition.participants.find(p => p.id === b.participantId);
       

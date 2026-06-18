@@ -2,6 +2,7 @@ import * as XLSX from 'xlsx';
 import * as ExcelJS from 'exceljs';
 import { Competition, Participant, ParticipantRecord } from '../types';
 import { formatRank } from './formatters';
+import { calculateRankings } from './calculations';
 
 export interface ExcelExportData {
   competition: Competition;
@@ -9,9 +10,19 @@ export interface ExcelExportData {
   records: ParticipantRecord[];
 }
 
+/**
+ * 出力直前に順位を最新ロジックで計算し直す。
+ * 履歴データには古いバージョンで計算された順位が保存されている場合があるため、
+ * エクスポート時に必ず再計算して正しい同順位（例: 1位・1位・3位）を反映する。
+ * calculateRankings は引数を破壊的に変更するので、保存データを汚さないようクローンを渡す。
+ */
+const withFreshRankings = (records: ParticipantRecord[]): ParticipantRecord[] =>
+  calculateRankings(records.map(record => ({ ...record })));
+
 export const exportToExcelWithBorders = async (data: ExcelExportData): Promise<void> => {
-  const { competition, participants, records } = data;
-  
+  const { competition, participants } = data;
+  const records = withFreshRankings(data.records);
+
   // ExcelJSワークブックを作成
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet(competition.date.replace(/-/g, ''));
@@ -418,8 +429,9 @@ export const exportToExcelWithBorders = async (data: ExcelExportData): Promise<v
 };
 
 export const exportToExcel = (data: ExcelExportData): void => {
-  const { competition, participants, records } = data;
-  
+  const { competition, participants } = data;
+  const records = withFreshRankings(data.records);
+
   // 新しいワークブックを作成
   const workbook = XLSX.utils.book_new();
   
@@ -638,8 +650,9 @@ const addBordersToSheet = (sheet: XLSX.WorkSheet, numRows: number, numCols: numb
 
 // 簡易版のCSV出力（Excel出力の代替）
 export const exportToCSV = (data: ExcelExportData): void => {
-  const { competition, participants, records } = data;
-  
+  const { competition, participants } = data;
+  const records = withFreshRankings(data.records);
+
   const csvData = createMainSheetData(competition, participants, records);
   const csvContent = csvData.map(row => 
     row.map(cell => `"${cell}"`).join(',')
