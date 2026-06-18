@@ -1,4 +1,3 @@
-import * as XLSX from 'xlsx';
 import * as ExcelJS from 'exceljs';
 import { Competition, Participant, ParticipantRecord } from '../types';
 import { formatRank } from './formatters';
@@ -428,80 +427,6 @@ export const exportToExcelWithBorders = async (data: ExcelExportData): Promise<v
   URL.revokeObjectURL(url);
 };
 
-export const exportToExcel = (data: ExcelExportData): void => {
-  const { competition, participants } = data;
-  const records = withFreshRankings(data.records);
-
-  // 新しいワークブックを作成
-  const workbook = XLSX.utils.book_new();
-  
-  // メインデータシートを作成
-  const mainSheetData = createMainSheetData(competition, participants, records);
-  const mainSheet = XLSX.utils.aoa_to_sheet(mainSheetData);
-  
-  // 列幅の設定
-  const colWidths = [
-    { wch: 12 }, // 参加者名
-    { wch: 6 },  // 段位
-    { wch: 4 },  // 1射
-    { wch: 4 },  // 2射
-    { wch: 4 },  // 3射
-    { wch: 4 },  // 4射
-    { wch: 6 },  // 1計
-    { wch: 4 },  // 5射
-    { wch: 4 },  // 6射
-    { wch: 4 },  // 7射
-    { wch: 4 },  // 8射
-    { wch: 6 },  // 2計
-    { wch: 4 },  // 9射
-    { wch: 4 },  // 10射
-    { wch: 4 },  // 11射
-    { wch: 4 },  // 12射
-    { wch: 6 },  // 3計
-    { wch: 4 },  // 13射
-    { wch: 4 },  // 14射
-    { wch: 4 },  // 15射
-    { wch: 4 },  // 16射
-    { wch: 6 },  // 4計
-    { wch: 4 },  // 17射
-    { wch: 4 },  // 18射
-    { wch: 4 },  // 19射
-    { wch: 4 },  // 20射
-    { wch: 6 },  // 5計
-    { wch: 8 },  // 的中計
-    { wch: 6 },  // 矢数
-    { wch: 8 },  // 的中率
-    { wch: 6 },  // 順位
-  ];
-  
-  if (competition.handicapEnabled) {
-    colWidths.push(
-      { wch: 8 },  // ハンデ
-      { wch: 8 },  // 換算後
-      { wch: 8 }   // ハンデ順位
-    );
-  }
-  
-  mainSheet['!cols'] = colWidths;
-  
-  // 罫線を追加
-  addBordersToSheet(mainSheet, mainSheetData.length, colWidths.length);
-  
-  // シートを追加
-  const sheetName = competition.date.replace(/-/g, '');
-  XLSX.utils.book_append_sheet(workbook, mainSheet, sheetName);
-  
-  // ファイル名を生成
-  const fileName = `立禅の会${competition.date.replace(/-/g, '')}.xlsx`;
-  
-  // ファイルをダウンロード（スタイル情報を含める）
-  XLSX.writeFile(workbook, fileName, {
-    bookSST: false,
-    bookType: 'xlsx',
-    cellStyles: true
-  });
-};
-
 const createMainSheetData = (
   competition: Competition,
   participants: Participant[],
@@ -592,60 +517,6 @@ const createMainSheetData = (
   });
   
   return data;
-};
-
-// 罫線を追加する関数
-const addBordersToSheet = (sheet: XLSX.WorkSheet, numRows: number, numCols: number): void => {
-  const borderStyle = {
-    style: 'thin',
-    color: { rgb: '000000' }
-  };
-  
-  const border = {
-    top: borderStyle,
-    bottom: borderStyle,
-    left: borderStyle,
-    right: borderStyle
-  };
-  
-  // 範囲を設定
-  const range = { s: { c: 0, r: 0 }, e: { c: numCols - 1, r: numRows - 1 } };
-  sheet['!ref'] = XLSX.utils.encode_range(range);
-  
-  // 全てのセルに罫線を適用
-  for (let row = 0; row < numRows; row++) {
-    for (let col = 0; col < numCols; col++) {
-      const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
-      
-      // セルが存在しない場合は作成
-      if (!sheet[cellAddress]) {
-        sheet[cellAddress] = { t: 's', v: '' };
-      }
-      
-      // セルスタイルを設定
-      if (!sheet[cellAddress].s) {
-        sheet[cellAddress].s = {};
-      }
-      
-      // 罫線を追加
-      sheet[cellAddress].s.border = border;
-      
-      // ヘッダー行（3行目）に背景色を追加
-      if (row === 2) {
-        sheet[cellAddress].s.fill = {
-          fgColor: { rgb: 'E6E6E6' }
-        };
-        sheet[cellAddress].s.font = {
-          bold: true
-        };
-        // 中央揃え
-        sheet[cellAddress].s.alignment = {
-          horizontal: 'center',
-          vertical: 'center'
-        };
-      }
-    }
-  }
 };
 
 // 簡易版のCSV出力（Excel出力の代替）
