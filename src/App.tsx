@@ -226,7 +226,7 @@ const AppContent: React.FC = () => {
 function App() {
   return (
     <ErrorBoundary 
-      showDetails={process.env.NODE_ENV === 'development'}
+      showDetails={import.meta.env.DEV}
       onError={(error, errorInfo) => {
         const errorReport = createErrorReport(
           error,

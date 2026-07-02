@@ -3,7 +3,7 @@
  * インポート/エクスポート、LocalStorage操作のエラーをキャッチ
  */
 
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { Component, ErrorInfo, ReactNode } from 'react';
 
 interface DataErrorBoundaryState {
   hasError: boolean;
@@ -97,7 +97,7 @@ class DataErrorBoundary extends Component<DataErrorBoundaryProps, DataErrorBound
             )}
           </div>
 
-          <style jsx>{`
+          <style>{`
             .data-error-boundary {
               padding: 20px;
               border: 1px solid #f44336;

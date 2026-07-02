@@ -2,9 +2,8 @@ import React, { useState, useCallback, useMemo } from 'react';
 import { useCompetition } from '../contexts/CompetitionContext';
 import { Participant } from '../types';
 import { getShotDisplay, getShotClass } from '../utils/shotHelpers';
-import { sortParticipantsByOrder } from '../utils/arrayUtils';
-import { getGroupShootingOrders, findNextShot, getShootingOrderForRound } from '../utils/shootingOrder';
-import { getGroupInfo, groupParticipants } from '../utils/grouping';
+import { findNextShot, getShootingOrderForRound } from '../utils/shootingOrder';
+import { getGroupInfo } from '../utils/grouping';
 
 const ScoreInput: React.FC = () => {
   const { state, updateShot } = useCompetition();
@@ -34,11 +33,6 @@ const ScoreInput: React.FC = () => {
 
   const isFinished = useMemo(() => state.competition?.status === 'finished', [state.competition?.status]);
   
-  const sortedParticipants = useMemo(() => {
-    if (!state.competition) return [];
-    return sortParticipantsByOrder(state.competition.participants);
-  }, [state.competition?.participants]);
-
   const roundOptions = useMemo(() => {
     if (!state.competition) return [];
     return Array.from({ length: state.competition.roundsCount }, (_, i) => i + 1);
@@ -49,11 +43,6 @@ const ScoreInput: React.FC = () => {
     return getGroupInfo(state.competition.participants);
   }, [state.competition?.participants]);
 
-  const participantGroups = useMemo(() => {
-    if (!state.competition) return [];
-    return groupParticipants(sortedParticipants);
-  }, [sortedParticipants]);
-
   const sortedParticipantsByShootingOrder = useMemo(() => {
     if (!state.competition) return [];
     const shootingOrder = getShootingOrderForRound(
@@ -62,15 +51,6 @@ const ScoreInput: React.FC = () => {
       state.competition.enableRotation
     );
     return shootingOrder;
-  }, [state.competition?.participants, state.competition?.enableRotation, selectedRound]);
-
-  const shootingOrders = useMemo(() => {
-    if (!state.competition) return [];
-    return getGroupShootingOrders(
-      state.competition.participants,
-      selectedRound,
-      state.competition.enableRotation
-    );
   }, [state.competition?.participants, state.competition?.enableRotation, selectedRound]);
 
   const nextShot = useMemo(() => {

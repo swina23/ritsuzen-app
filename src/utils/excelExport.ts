@@ -529,7 +529,8 @@ export const exportToCSV = (data: ExcelExportData): void => {
     row.map(cell => `"${cell}"`).join(',')
   ).join('\n');
   
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  // BOM付きUTF-8で出力（WindowsのExcelで日本語が文字化けしないように）
+  const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement('a');
   const url = URL.createObjectURL(blob);
   

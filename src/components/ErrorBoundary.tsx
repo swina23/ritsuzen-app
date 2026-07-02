@@ -3,7 +3,7 @@
  * アプリケーション全体のエラーキャッチと表示を担当
  */
 
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { Component, ErrorInfo, ReactNode } from 'react';
 
 interface ErrorBoundaryState {
   hasError: boolean;
@@ -158,7 +158,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
             </div>
           </div>
 
-          <style jsx>{`
+          <style>{`
             .error-boundary {
               min-height: 400px;
               display: flex;

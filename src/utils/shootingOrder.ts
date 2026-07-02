@@ -57,7 +57,6 @@ export function findNextShot(
   shotIndex: number;
   group?: number;
 } | null {
-  const shootingOrder = getShootingOrderForRound(participants, roundNumber, enableRotation);
   const groups = groupParticipants(participants);
 
   // 各グループごとに処理

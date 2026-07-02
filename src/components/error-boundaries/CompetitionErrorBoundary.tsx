@@ -3,7 +3,7 @@
  * 射撃記録、参加者管理、計算処理のエラーをキャッチ
  */
 
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { Component, ErrorInfo, ReactNode } from 'react';
 
 interface CompetitionErrorBoundaryState {
   hasError: boolean;
@@ -119,7 +119,7 @@ class CompetitionErrorBoundary extends Component<CompetitionErrorBoundaryProps, 
             )}
           </div>
 
-          <style jsx>{`
+          <style>{`
             .competition-error-boundary {
               background: linear-gradient(135deg, #fff5f5 0%, #ffeaea 100%);
               border: 2px solid #ffcdd2;

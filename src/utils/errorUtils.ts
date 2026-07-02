@@ -54,7 +54,7 @@ export const createErrorReport = (
       stack: error.stack
     },
     errorInfo: errorInfo ? {
-      componentStack: errorInfo.componentStack
+      componentStack: errorInfo.componentStack ?? undefined
     } : undefined,
     context: {
       userAgent: navigator.userAgent,
