@@ -82,7 +82,7 @@ const Results: React.FC = () => {
               {Array.from({ length: state.competition.roundsCount }, (_, i) => (
                 <th key={i}>{i + 1}立</th>
               ))}
-              <th>的中</th>
+              <th>的中総計</th>
               <th>的中率</th>
               {state.competition.handicapEnabled && (
                 <>
