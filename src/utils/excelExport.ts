@@ -49,7 +49,7 @@ export const exportToExcelWithBorders = async (data: ExcelExportData): Promise<v
     headers.push(`${i}立目`, '', '', '', `${i}計`);
   }
   
-  headers.push('的中', '矢数', '的中率', '調整前順位');
+  headers.push('的中総計', '矢数', '的中率', '調整前順位');
   
   if (competition.handicapEnabled) {
     headers.push('ハンデ', '調整後的中', 'ハンデ調整後順位');
@@ -306,7 +306,7 @@ export const exportToExcelWithBorders = async (data: ExcelExportData): Promise<v
     colWidths.push(4, 4, 4, 4, 6); // 各射: 4, 立計: 6
   }
   
-  colWidths.push(8, 6, 8, 10); // 的中: 8, 矢数: 6, 的中率: 8, 調整前順位: 10
+  colWidths.push(10, 6, 8, 10); // 的中総計: 10, 矢数: 6, 的中率: 8, 調整前順位: 10
   
   if (competition.handicapEnabled) {
     colWidths.push(8, 12, 16);  // ハンデ: 8, 調整後的中: 12, ハンデ調整後順位: 16
@@ -453,7 +453,7 @@ const createMainSheetData = (
     headers.push(`${i}立目`, '', '', '', `${i}計`);
   }
   
-  headers.push('的中', '矢数', '的中率', '調整前順位');
+  headers.push('的中総計', '矢数', '的中率', '調整前順位');
   
   
   if (competition.handicapEnabled) {
