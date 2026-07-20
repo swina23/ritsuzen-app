@@ -27,6 +27,17 @@
   color: #999;
 }
 
+.app-variant {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background-color: #1976d2;
+  color: #fff;
+  font-size: 12px;
+  font-weight: bold;
+  vertical-align: middle;
+}
 
 .competition-status {
   display: flex;
