@@ -3,7 +3,7 @@
  */
 
 import React from 'react';
-import { storageManager } from '../../utils/StorageManager';
+import { useCompetitionHistory } from '../../hooks/useStorage';
 import { exportToExcelWithBorders, exportToCSV } from '../../utils/excelExport';
 import { Competition } from '../../types';
 
@@ -14,7 +14,7 @@ interface CompetitionHistorySectionProps {
 const CompetitionHistorySection: React.FC<CompetitionHistorySectionProps> = ({ 
   onStatusUpdate 
 }) => {
-  const competitionHistory = storageManager.getCompetitionHistory();
+  const competitionHistory = useCompetitionHistory();
 
   const handleExportHistoryExcel = async (competition: Competition) => {
     try {

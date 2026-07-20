@@ -11,6 +11,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import CompetitionErrorBoundary from './components/error-boundaries/CompetitionErrorBoundary';
 import DataErrorBoundary from './components/error-boundaries/DataErrorBoundary';
 import ConfirmModal from './components/ConfirmModal';
+import SyncStatusBar from './components/SyncStatusBar';
 import { createErrorReport, saveErrorReport } from './utils/errorUtils';
 import './App.css';
 
@@ -97,6 +98,12 @@ const AppContent: React.FC = () => {
   };
 
   const renderView = () => {
+    // Firestoreの初回読み込み中に「大会なし」と決めつけると、
+    // 進行中の大会があるのに一瞬だけ新規作成画面が出てしまう
+    if (state.loading) {
+      return <div className="auth-loading">データを読み込み中…</div>;
+    }
+
     if (!state.competition && currentView !== 'data') {
       return (
         <CompetitionErrorBoundary section="general" onError={handleError}>
@@ -171,6 +178,8 @@ const AppContent: React.FC = () => {
           </div>
         )}
       </header>
+
+      <SyncStatusBar />
 
       <nav className="app-nav">
         <button 

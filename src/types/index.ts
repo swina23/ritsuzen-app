@@ -56,4 +56,6 @@ export interface CompetitionState {
   competition: Competition | null;
   currentRound: number;
   currentParticipant: number;
+  /** Firestoreからの初回読み込みが完了するまでtrue */
+  loading: boolean;
 }

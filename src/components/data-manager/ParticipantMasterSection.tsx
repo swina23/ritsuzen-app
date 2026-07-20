@@ -2,9 +2,9 @@
  * 参加者マスター管理セクションコンポーネント
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { storageManager } from '../../utils/StorageManager';
-import { ParticipantMaster } from '../../types';
+import { useAllParticipantMasters } from '../../hooks/useStorage';
 import { formatRank } from '../../utils/formatters';
 import { sortMastersByUsage } from '../../utils/arrayUtils';
 import { formatJapaneseDate } from '../../utils/dateUtils';
@@ -17,19 +17,10 @@ interface ParticipantMasterSectionProps {
 const ParticipantMasterSection: React.FC<ParticipantMasterSectionProps> = ({ 
   onStatusUpdate 
 }) => {
-  const [masters, setMasters] = useState<ParticipantMaster[]>([]);
+  const allMasters = useAllParticipantMasters();
+  const masters = useMemo(() => sortMastersByUsage(allMasters), [allMasters]);
   const [showMasters, setShowMasters] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
-  
-  // マスター一覧を読み込み
-  const loadMasters = () => {
-    const masterList = storageManager.getAllParticipantMasters();
-    setMasters(sortMastersByUsage(masterList));
-  };
-  
-  useEffect(() => {
-    loadMasters();
-  }, []);
 
   const handleDeleteMaster = (masterId: string, masterName: string) => {
     setDeleteTarget({ id: masterId, name: masterName });
@@ -37,15 +28,14 @@ const ParticipantMasterSection: React.FC<ParticipantMasterSectionProps> = ({
 
   const confirmDeleteMaster = () => {
     if (!deleteTarget) return;
+    // 一覧はFirestoreの購読経由で自動更新されるため、手動での再読み込みは不要
     storageManager.deleteParticipantMaster(deleteTarget.id);
-    loadMasters();
     onStatusUpdate(`✅ 「${deleteTarget.name}」を削除しました`);
     setDeleteTarget(null);
   };
 
   const handleToggleMasterActive = (masterId: string, currentActive: boolean) => {
     storageManager.updateParticipantMaster(masterId, { isActive: !currentActive });
-    loadMasters();
     onStatusUpdate(`✅ 参加者を${currentActive ? '無効化' : '有効化'}しました`);
   };
 

@@ -4,6 +4,7 @@ import { initializeParticipantRecord, updateParticipantRecord, calculateRankings
 import { storageManager } from '../utils/StorageManager';
 import { generateCompetitionId, generateParticipantId } from '../utils/idGeneration';
 import { DEFAULT_ROUNDS_COUNT } from '../utils/constants';
+import { normalizeCompetition } from '../utils/competitionMigration';
 import { moveParticipantUp as moveUp, moveParticipantDown as moveDown } from '../utils/arrayUtils';
 import { applyAutoGrouping as autoGroup, moveParticipantToGroup as moveToGroup, clearGrouping as clearGroup } from '../utils/grouping';
 
@@ -41,7 +42,9 @@ type CompetitionAction =
 const initialState: CompetitionState = {
   competition: null,
   currentRound: 1,
-  currentParticipant: 0
+  currentParticipant: 0,
+  // Firestoreからの初回読み込みが終わるまでは、まだ「大会なし」と断定できない
+  loading: true
 };
 
 const CompetitionContext = createContext<CompetitionContextType | undefined>(undefined);
@@ -257,31 +260,25 @@ const competitionReducer = (state: CompetitionState, action: CompetitionAction):
     }
 
     case 'RESET_COMPETITION': {
-      return initialState;
+      // initialStateをそのまま返すとloadingがtrueに戻ってしまう
+      return { ...initialState, loading: false };
     }
 
     case 'LOAD_COMPETITION': {
       if (!action.payload) {
         return {
           ...state,
-          competition: null
+          competition: null,
+          loading: false
         };
       }
 
-      // 既存データのマイグレーション: orderフィールドが欠けている場合は追加
-      const migratedParticipants = action.payload.participants.map((participant, index) => ({
-        ...participant,
-        order: participant.order !== undefined ? participant.order : index + 1
-      }));
-
+      // 既存データのマイグレーション(order / roundsCount / enableRotation の補完)。
+      // 履歴・通算集計の読み込み経路と同じ関数を通す。
       return {
         ...state,
-        competition: {
-          ...action.payload,
-          participants: migratedParticipants,
-          roundsCount: action.payload.roundsCount !== undefined ? action.payload.roundsCount : DEFAULT_ROUNDS_COUNT,
-          enableRotation: action.payload.enableRotation !== undefined ? action.payload.enableRotation : true
-        }
+        competition: normalizeCompetition(action.payload),
+        loading: false
       };
     }
 
@@ -293,20 +290,34 @@ const competitionReducer = (state: CompetitionState, action: CompetitionAction):
 export const CompetitionProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(competitionReducer, initialState);
 
-  // アプリ起動時にLocalStorageからデータを読み込み
+  // アプリ起動時にFirestoreの購読を開始し、初回スナップショットが揃ってから読み込む。
+  // このProviderは認証後(AuthGateの内側)にしかマウントされない。
   useEffect(() => {
-    const savedCompetition = storageManager.loadCurrentCompetition();
-    if (savedCompetition) {
-      dispatch({ type: 'LOAD_COMPETITION', payload: savedCompetition });
+    storageManager.initialize();
+
+    // 既に準備できていれば購読せず即座に読み込む
+    if (storageManager.isReady()) {
+      dispatch({ type: 'LOAD_COMPETITION', payload: storageManager.loadCurrentCompetition() });
+      return;
     }
+
+    const unsubscribe = storageManager.subscribe(() => {
+      if (!storageManager.isReady()) return;
+      unsubscribe();
+      dispatch({ type: 'LOAD_COMPETITION', payload: storageManager.loadCurrentCompetition() });
+    });
+
+    return unsubscribe;
   }, []);
 
-  // 大会データが変更されるたびにLocalStorageに保存
+  // 大会データが変更されるたびにFirestoreへ保存。
+  // 読み込み完了前に走らせると、まだ空のstateで既存データを上書きしてしまう。
   useEffect(() => {
+    if (state.loading) return;
     if (state.competition) {
       storageManager.saveCurrentCompetition(state.competition);
     }
-  }, [state.competition]);
+  }, [state.competition, state.loading]);
 
   const createCompetition = (name: string, date: string, handicapEnabled: boolean, enableRotation: boolean, roundsCount: number = DEFAULT_ROUNDS_COUNT) => {
     dispatch({ type: 'CREATE_COMPETITION', payload: { name, date, handicapEnabled, enableRotation, roundsCount } });
@@ -349,15 +360,8 @@ export const CompetitionProvider: React.FC<{ children: ReactNode }> = ({ childre
   };
 
   const finishCompetition = () => {
-    if (state.competition) {
-      // 大会終了時に履歴に保存
-      const finishedCompetition = {
-        ...state.competition,
-        status: 'finished' as const,
-        updatedAt: new Date().toISOString()
-      };
-      storageManager.saveCompetitionToHistory(finishedCompetition);
-    }
+    // 保存は state.competition の変更を監視するeffectが行う。
+    // ここで明示的に書き込むと同じドキュメントへ二重に書くことになる。
     dispatch({ type: 'FINISH_COMPETITION' });
   };
 

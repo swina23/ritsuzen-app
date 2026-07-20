@@ -3,10 +3,10 @@
  */
 
 import React from 'react';
-import { storageManager } from '../../utils/StorageManager';
+import { useStorageInfo } from '../../hooks/useStorage';
 
 const StorageInfo: React.FC = React.memo(() => {
-  const storageInfo = storageManager.getStorageInfo();
+  const storageInfo = useStorageInfo();
 
   return (
     <div className="storage-info">

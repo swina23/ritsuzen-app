@@ -1,5 +1,10 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
+import {
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+} from 'firebase/firestore';
 
 // これらの値は秘密情報ではなく、ビルド後のJSに埋め込まれて公開される。
 // アクセス制御は Firestore Security Rules で行う。
@@ -31,3 +36,14 @@ export const auth = getAuth(firebaseApp);
 export const googleProvider = new GoogleAuthProvider();
 // 共用端末で前回のアカウントに自動ログインせず、毎回選ばせる
 googleProvider.setCustomParameters({ prompt: 'select_account' });
+
+// IndexedDBへの永続キャッシュを有効化する。これにより
+//  - 圏外でも読み取りはキャッシュから即座に返る
+//  - 圏外中の書き込みはローカルに反映され、復帰時に自動送信される
+//  - 同一端末で複数タブを開いても矛盾しない (persistentMultipleTabManager)
+// ignoreUndefinedProperties は Participant.group のような任意フィールドが
+// undefined のまま渡ってきても書き込みが落ちないようにするためのもの。
+export const db = initializeFirestore(firebaseApp, {
+  ignoreUndefinedProperties: true,
+  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+});

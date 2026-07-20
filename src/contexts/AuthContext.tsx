@@ -3,6 +3,7 @@ import type { User } from 'firebase/auth';
 import { onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth';
 import { auth, googleProvider } from '../lib/firebase';
 import { isAuthorizedEmail } from '../config/authorizedUsers';
+import { storageManager } from '../utils/StorageManager';
 
 export type AuthStatus =
   | 'loading'       // 認証状態の復元中
@@ -29,12 +30,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // リロード後もログイン状態が復元される。完了するまでは 'loading'
     return onAuthStateChanged(auth, (nextUser) => {
       if (!nextUser) {
+        // 共用端末での使用を前提としているため、ログアウト時には
+        // Firestoreの購読とキャッシュを必ず破棄する。残したままだと
+        // 次にログインした人に前の人の大会データが見えてしまう。
+        storageManager.dispose();
         setUser(null);
         setStatus('signedOut');
         return;
       }
+      const authorized = isAuthorizedEmail(nextUser.email);
+      if (!authorized) {
+        storageManager.dispose();
+      }
       setUser(nextUser);
-      setStatus(isAuthorizedEmail(nextUser.email) ? 'signedIn' : 'unauthorized');
+      setStatus(authorized ? 'signedIn' : 'unauthorized');
     });
   }, []);
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -18,7 +18,7 @@ import { useCompetition } from '../contexts/CompetitionContext';
 import { formatRank } from '../utils/formatters';
 import { RANK_OPTIONS } from '../utils/constants';
 import { storageManager } from '../utils/StorageManager';
-import { ParticipantMaster } from '../types';
+import { useParticipantMasters } from '../hooks/useStorage';
 import { sortMastersByUsage, sortParticipantsByOrder, filterByRank } from '../utils/arrayUtils';
 import { getGroupInfo, groupParticipants } from '../utils/grouping';
 import SortableParticipantItem from './SortableParticipantItem';
@@ -29,7 +29,6 @@ const ParticipantSetup: React.FC = () => {
   const [name, setName] = useState('');
   const [rank, setRank] = useState(1);
   const [saveToMaster, setSaveToMaster] = useState(false);
-  const [masters, setMasters] = useState<ParticipantMaster[]>([]);
   const [selectedMasters, setSelectedMasters] = useState<Set<string>>(new Set());
   const [showMasters, setShowMasters] = useState(true);
   const [filterRank, setFilterRank] = useState<number | null>(null);
@@ -47,14 +46,9 @@ const ParticipantSetup: React.FC = () => {
     })
   );
 
-  const loadMasters = useCallback(() => {
-    const masterList = storageManager.getParticipantMasters();
-    setMasters(sortMastersByUsage(masterList));
-  }, []);
-
-  useEffect(() => {
-    loadMasters();
-  }, [loadMasters]);
+  // マスター一覧はFirestoreの購読から供給されるため、手動での再読み込みは不要
+  const activeMasters = useParticipantMasters();
+  const masters = useMemo(() => sortMastersByUsage(activeMasters), [activeMasters]);
 
   const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
@@ -75,7 +69,6 @@ const ParticipantSetup: React.FC = () => {
               lastUsed: new Date().toISOString(),
               usageCount: 1
             });
-            loadMasters();
           } catch (error) {
             console.error('Failed to save to master:', error);
           }
@@ -86,7 +79,7 @@ const ParticipantSetup: React.FC = () => {
       setRank(1);
       setSaveToMaster(false);
     }
-  }, [addParticipant, saveToMaster, name, rank, state.competition?.status, loadMasters]);
+  }, [addParticipant, saveToMaster, name, rank, state.competition?.status]);
 
   const handleMasterSelection = useCallback((masterId: string) => {
     const newSelected = new Set(selectedMasters);
@@ -113,8 +106,7 @@ const ParticipantSetup: React.FC = () => {
     }
 
     setSelectedMasters(new Set());
-    loadMasters();
-  }, [selectedMasters, addParticipant, state.competition?.status, loadMasters, masters]);
+  }, [selectedMasters, addParticipant, state.competition?.status, masters]);
 
   const handleDeleteMaster = useCallback((masterId: string, masterName: string) => {
     setDeleteTarget({ id: masterId, name: masterName });
@@ -128,9 +120,8 @@ const ParticipantSetup: React.FC = () => {
       next.delete(deleteTarget.id);
       return next;
     });
-    loadMasters();
     setDeleteTarget(null);
-  }, [deleteTarget, loadMasters]);
+  }, [deleteTarget]);
 
   const filteredMasters = useMemo(() => {
     return filterByRank(masters, filterRank);
