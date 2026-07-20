@@ -56,24 +56,37 @@ const ParticipantSetup: React.FC = () => {
       return;
     }
     if (name.trim()) {
-      addParticipant({ name: name.trim(), rank });
+      // マスターへの保存を先に済ませ、得られたIDを参加者に紐付ける。
+      // これがないと通算成績の名寄せが氏名の文字列一致頼みになり、
+      // 改名や同姓同名で破綻する。
+      let masterId: string | undefined;
 
       if (saveToMaster) {
         const existingMaster = storageManager.findMasterByName(name.trim());
-        if (!existingMaster) {
+        if (existingMaster) {
+          masterId = existingMaster.id;
+          // 無効化済みの人を手入力で登録し直したときは、マスターも有効に戻す。
+          // 戻さないと「マスターに保存」したのに一覧に出てこない状態になる。
+          if (!existingMaster.isActive) {
+            storageManager.updateParticipantMaster(existingMaster.id, { isActive: true });
+          }
+        } else {
           try {
-            storageManager.saveParticipantMaster({
+            // IDはクライアント側で採番されるため戻り値は同期的に得られる
+            masterId = storageManager.saveParticipantMaster({
               name: name.trim(),
               rank,
               isActive: true,
               lastUsed: new Date().toISOString(),
               usageCount: 1
-            });
+            }).id;
           } catch (error) {
             console.error('Failed to save to master:', error);
           }
         }
       }
+
+      addParticipant({ name: name.trim(), rank, masterId });
 
       setName('');
       setRank(1);
@@ -99,7 +112,7 @@ const ParticipantSetup: React.FC = () => {
     for (const masterId of selectedMasters) {
       const master = masters.find(m => m.id === masterId);
       if (master) {
-        addParticipant({ name: master.name, rank: master.rank });
+        addParticipant({ name: master.name, rank: master.rank, masterId: master.id });
         storageManager.incrementMasterUsage(masterId);
         await new Promise(resolve => setTimeout(resolve, 1));
       }

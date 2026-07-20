@@ -4,6 +4,9 @@ export interface Participant {
   rank: number; // 段位
   order: number; // 表示順序
   group?: number; // グループ番号 (1, 2, 3...)
+  // 参加者マスターとの紐付け。通算成績の名寄せに使う。
+  // 手入力のみでマスターに保存しなかった場合は undefined のまま。
+  masterId?: string;
 }
 
 export interface Shot {

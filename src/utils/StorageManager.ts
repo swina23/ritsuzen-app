@@ -390,8 +390,13 @@ export class StorageManager {
     this.track(deleteDoc(doc(db, PARTICIPANT_MASTERS, masterId)), 'deleteParticipantMaster');
   }
 
+  /**
+   * 氏名からマスターを探す。無効化済み(isActive=false)のマスターも対象にする。
+   * 有効なものだけを見ると、一度無効化した人を再登録したときに同名のマスターが
+   * もう1件できてしまい、同一人物の通算成績がmasterIdごとに割れるため。
+   */
   findMasterByName(name: string): ParticipantMaster | null {
-    return this.activeMastersCache.find((master) => master.name === name) ?? null;
+    return this.mastersCache.find((master) => master.name === name) ?? null;
   }
 
   importParticipantMasters(importData: unknown): ImportResult {
