@@ -1,0 +1,29 @@
+rules_version = '2';
+
+// 立禅の会・射会記録アプリの Firestore Security Rules
+//
+// このファイルはリポジトリ上の正本。変更したら Firebase Console の
+// Firestore Database > ルール に貼り付けて「公開」すること。
+//
+// メンバーを増減するときは src/config/authorizedUsers.ts も併せて更新する。
+// (あちらは画面表示の切り替え用。実際のアクセス制御はこちらが担う)
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuthorized() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email.lower() in [
+             'tomo.the.slyb@gmail.com',
+             'info.rituzen@gmail.com'
+           ];
+    }
+
+    // 許可リストのアカウントのみ全データを読み書きできる。
+    // 立禅の会の内部利用のみを想定しているため、メンバー間の権限差は設けない。
+    match /{document=**} {
+      allow read, write: if isAuthorized();
+    }
+  }
+}

@@ -39,6 +39,36 @@
   vertical-align: middle;
 }
 
+.app-account {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 6px;
+  font-size: 12px;
+  color: #999;
+}
+
+.logout-btn {
+  padding: 2px 10px;
+  background-color: transparent;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #666;
+  cursor: pointer;
+}
+
+.logout-btn:hover {
+  background-color: #eee;
+}
+
+.auth-loading {
+  padding: 60px 20px;
+  text-align: center;
+  color: #666;
+}
+
 .competition-status {
   display: flex;
   justify-content: center;

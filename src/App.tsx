@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { CompetitionProvider, useCompetition } from './contexts/CompetitionContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import LoginScreen from './components/LoginScreen';
 import CompetitionSetup from './components/CompetitionSetup';
 import ParticipantSetup from './components/ParticipantSetup';
 import ScoreInput from './components/ScoreInput';
@@ -28,8 +30,25 @@ type ModalConfig = {
   onConfirm: () => void;
 };
 
+/**
+ * ログイン済み・許可済みのときだけ中身を表示する。
+ * 実際のアクセス制御は Firestore Security Rules 側で行われる。
+ */
+const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { status } = useAuth();
+
+  if (status === 'loading') {
+    return <div className="auth-loading">読み込み中…</div>;
+  }
+  if (status !== 'signedIn') {
+    return <LoginScreen />;
+  }
+  return <>{children}</>;
+};
+
 const AppContent: React.FC = () => {
   const { state, finishCompetition, resetCompetition } = useCompetition();
+  const { user, logOut } = useAuth();
   const [currentView, setCurrentView] = useState<AppView>('setup');
   const [modalConfig, setModalConfig] = useState<ModalConfig | null>(null);
 
@@ -136,6 +155,10 @@ const AppContent: React.FC = () => {
           {IS_CLOUD && <span className="app-variant">クラウド版</span>}
         </h1>
         <span className="app-version">v{VERSION}</span>
+        <div className="app-account">
+          <span className="app-account-email">{user?.email}</span>
+          <button className="logout-btn" onClick={logOut}>ログアウト</button>
+        </div>
         {state.competition && (
           <div className="competition-status">
             <span>{state.competition.name}</span>
@@ -243,9 +266,13 @@ function App() {
         saveErrorReport(errorReport);
       }}
     >
-      <CompetitionProvider>
-        <AppContent />
-      </CompetitionProvider>
+      <AuthProvider>
+        <AuthGate>
+          <CompetitionProvider>
+            <AppContent />
+          </CompetitionProvider>
+        </AuthGate>
+      </AuthProvider>
     </ErrorBoundary>
   );
 }
