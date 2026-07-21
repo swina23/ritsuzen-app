@@ -104,7 +104,6 @@ const ParticipantMasterSection: React.FC<ParticipantMasterSectionProps> = ({
                       <div className="master-details">
                         <strong>{master.name}</strong>
                         <span className="master-rank">({formatRank(master.rank)})</span>
-                        {!master.isActive && <span className="inactive-badge">無効</span>}
                       </div>
                       <div className="master-actions">
                         <button
