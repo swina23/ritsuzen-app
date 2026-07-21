@@ -8,6 +8,7 @@ import { useAllParticipantMasters } from '../../hooks/useStorage';
 import { formatRank } from '../../utils/formatters';
 import { sortMastersByUsage } from '../../utils/arrayUtils';
 import { formatJapaneseDate } from '../../utils/dateUtils';
+import { RANK_OPTIONS } from '../../utils/constants';
 
 interface ParticipantMasterSectionProps {
   onStatusUpdate: (message: string) => void;
@@ -19,6 +20,7 @@ const ParticipantMasterSection: React.FC<ParticipantMasterSectionProps> = ({
   const allMasters = useAllParticipantMasters();
   const masters = useMemo(() => sortMastersByUsage(allMasters), [allMasters]);
   const [showMasters, setShowMasters] = useState(false);
+  const [editTarget, setEditTarget] = useState<{ id: string; name: string; rank: number } | null>(null);
 
   // 一覧はFirestoreの購読経由で自動更新されるため、手動での再読み込みは不要
   const handleToggleMasterActive = (masterId: string, currentActive: boolean) => {
@@ -26,8 +28,29 @@ const ParticipantMasterSection: React.FC<ParticipantMasterSectionProps> = ({
     onStatusUpdate(`✅ 参加者を${currentActive ? '無効化' : '有効化'}しました`);
   };
 
-  // 外部からマスター一覧を更新するためのメソッドを公開（未使用のため削除）
-  // React.useImperativeHandle を削除
+  const handleSaveEdit = () => {
+    if (!editTarget) return;
+    const name = editTarget.name.trim();
+
+    if (!name) {
+      onStatusUpdate('❌ 氏名を入力してください');
+      return;
+    }
+
+    // 同名のマスターが2件あると通算成績の名寄せが効かなくなるため、改名で作らせない。
+    // 既存側もtrimして比べる（空白付きで保存された古いデータをすり抜けさせないため）
+    const duplicate = masters.find(
+      (master) => master.id !== editTarget.id && master.name.trim() === name
+    );
+    if (duplicate) {
+      onStatusUpdate(`❌ 「${name}」は既に登録されています`);
+      return;
+    }
+
+    storageManager.updateParticipantMaster(editTarget.id, { name, rank: editTarget.rank });
+    onStatusUpdate(`✅ 「${name}」を更新しました`);
+    setEditTarget(null);
+  };
 
   return (
     <div className="masters-section">
@@ -49,26 +72,63 @@ const ParticipantMasterSection: React.FC<ParticipantMasterSectionProps> = ({
             <div className="masters-list">
               {masters.map(master => (
                 <div key={master.id} className={`master-item ${!master.isActive ? 'inactive' : ''}`}>
-                  <div className="master-info">
-                    <div className="master-details">
-                      <strong>{master.name}</strong>
-                      <span className="master-rank">({formatRank(master.rank)})</span>
-                      <span className="master-usage">使用回数: {master.usageCount}</span>
-                      <span className="master-last-used">
-                        最終使用: {formatJapaneseDate(master.lastUsed)}
-                      </span>
-                      {!master.isActive && <span className="inactive-badge">無効</span>}
-                    </div>
-                    <div className="master-actions">
-                      <button
-                        onClick={() => handleToggleMasterActive(master.id, master.isActive)}
-                        className={`toggle-active-btn ${master.isActive ? 'deactivate' : 'activate'}`}
-                        title={master.isActive ? '無効化' : '有効化'}
+                  {editTarget?.id === master.id ? (
+                    <div className="master-edit">
+                      <input
+                        type="text"
+                        value={editTarget.name}
+                        onChange={(e) => setEditTarget({ ...editTarget, name: e.target.value })}
+                        className="master-edit-name"
+                        placeholder="氏名"
+                        autoFocus
+                      />
+                      <select
+                        value={editTarget.rank}
+                        onChange={(e) => setEditTarget({ ...editTarget, rank: Number(e.target.value) })}
+                        className="master-edit-rank"
                       >
-                        {master.isActive ? '無効化' : '有効化'}
-                      </button>
+                        {RANK_OPTIONS.map(r => (
+                          <option key={r} value={r}>{formatRank(r)}</option>
+                        ))}
+                      </select>
+                      <div className="master-actions">
+                        <button onClick={handleSaveEdit} className="master-edit-save">
+                          保存
+                        </button>
+                        <button onClick={() => setEditTarget(null)} className="master-edit-cancel">
+                          キャンセル
+                        </button>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="master-info">
+                      <div className="master-details">
+                        <strong>{master.name}</strong>
+                        <span className="master-rank">({formatRank(master.rank)})</span>
+                        <span className="master-usage">使用回数: {master.usageCount}</span>
+                        <span className="master-last-used">
+                          最終使用: {formatJapaneseDate(master.lastUsed)}
+                        </span>
+                        {!master.isActive && <span className="inactive-badge">無効</span>}
+                      </div>
+                      <div className="master-actions">
+                        <button
+                          onClick={() => setEditTarget({ id: master.id, name: master.name, rank: master.rank })}
+                          className="master-edit-btn"
+                          title="氏名・段位を編集"
+                        >
+                          編集
+                        </button>
+                        <button
+                          onClick={() => handleToggleMasterActive(master.id, master.isActive)}
+                          className={`toggle-active-btn ${master.isActive ? 'deactivate' : 'activate'}`}
+                          title={master.isActive ? '無効化' : '有効化'}
+                        >
+                          {master.isActive ? '無効化' : '有効化'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

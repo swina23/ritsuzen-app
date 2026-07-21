@@ -402,9 +402,13 @@ export class StorageManager {
    * 氏名からマスターを探す。無効化済み(isActive=false)のマスターも対象にする。
    * 有効なものだけを見ると、一度無効化した人を再登録したときに同名のマスターが
    * もう1件できてしまい、同一人物の通算成績がmasterIdごとに割れるため。
+   *
+   * 比較は前後の空白を落として行う。空白付きで保存された古いデータが
+   * 残っていても、見た目が同じなら同じ人として引き当てるため。
    */
   findMasterByName(name: string): ParticipantMaster | null {
-    return this.mastersCache.find((master) => master.name === name) ?? null;
+    const target = name.trim();
+    return this.mastersCache.find((master) => master.name.trim() === target) ?? null;
   }
 
   importParticipantMasters(importData: unknown): ImportResult {
@@ -414,19 +418,23 @@ export class StorageManager {
         return { success: false, error: 'Invalid import data format' };
       }
 
-      const existingNames = new Set(this.mastersCache.map((m) => m.name));
+      // 氏名は前後の空白を落として比較・保存する。
+      // 空白付きのまま取り込むと見た目が同じ別マスターができてしまい、
+      // 通算成績の名寄せ(careerStatsのbuildMasterIdByName)が効かなくなるため。
+      const existingNames = new Set(this.mastersCache.map((m) => m.name.trim()));
       const now = new Date().toISOString();
 
       const newMasters: ParticipantMaster[] = payload.participantMasters
         .filter((master: ParticipantMaster) => {
-          if (!master?.name || master.rank === undefined || master.rank === null) return false;
-          if (existingNames.has(master.name)) return false;
+          if (!master?.name?.trim() || master.rank === undefined || master.rank === null) return false;
+          if (existingNames.has(master.name.trim())) return false;
           // 同一ファイル内に同名が複数あっても1件だけ取り込む
-          existingNames.add(master.name);
+          existingNames.add(master.name.trim());
           return true;
         })
         .map((master: ParticipantMaster) => ({
           ...master,
+          name: master.name.trim(),
           id: this.generateId(),
           createdAt: now,
           isActive: master.isActive !== undefined ? master.isActive : true,
