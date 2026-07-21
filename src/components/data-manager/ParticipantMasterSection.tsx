@@ -8,7 +8,6 @@ import { useAllParticipantMasters } from '../../hooks/useStorage';
 import { formatRank } from '../../utils/formatters';
 import { sortMastersByUsage } from '../../utils/arrayUtils';
 import { formatJapaneseDate } from '../../utils/dateUtils';
-import ConfirmModal from '../ConfirmModal';
 
 interface ParticipantMasterSectionProps {
   onStatusUpdate: (message: string) => void;
@@ -20,20 +19,8 @@ const ParticipantMasterSection: React.FC<ParticipantMasterSectionProps> = ({
   const allMasters = useAllParticipantMasters();
   const masters = useMemo(() => sortMastersByUsage(allMasters), [allMasters]);
   const [showMasters, setShowMasters] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
-  const handleDeleteMaster = (masterId: string, masterName: string) => {
-    setDeleteTarget({ id: masterId, name: masterName });
-  };
-
-  const confirmDeleteMaster = () => {
-    if (!deleteTarget) return;
-    // 一覧はFirestoreの購読経由で自動更新されるため、手動での再読み込みは不要
-    storageManager.deleteParticipantMaster(deleteTarget.id);
-    onStatusUpdate(`✅ 「${deleteTarget.name}」を削除しました`);
-    setDeleteTarget(null);
-  };
-
+  // 一覧はFirestoreの購読経由で自動更新されるため、手動での再読み込みは不要
   const handleToggleMasterActive = (masterId: string, currentActive: boolean) => {
     storageManager.updateParticipantMaster(masterId, { isActive: !currentActive });
     onStatusUpdate(`✅ 参加者を${currentActive ? '無効化' : '有効化'}しました`);
@@ -44,15 +31,6 @@ const ParticipantMasterSection: React.FC<ParticipantMasterSectionProps> = ({
 
   return (
     <div className="masters-section">
-      <ConfirmModal
-        isOpen={deleteTarget !== null}
-        title={`「${deleteTarget?.name}」を削除しますか？`}
-        message="この操作は取り消せません。"
-        confirmLabel="削除する"
-        danger={true}
-        onConfirm={confirmDeleteMaster}
-        onCancel={() => setDeleteTarget(null)}
-      />
       <div className="masters-header">
         <h3>👥 参加者マスター</h3>
         <button 
@@ -88,13 +66,6 @@ const ParticipantMasterSection: React.FC<ParticipantMasterSectionProps> = ({
                         title={master.isActive ? '無効化' : '有効化'}
                       >
                         {master.isActive ? '無効化' : '有効化'}
-                      </button>
-                      <button
-                        onClick={() => handleDeleteMaster(master.id, master.name)}
-                        className="delete-btn"
-                        title="削除"
-                      >
-                        削除
                       </button>
                     </div>
                   </div>

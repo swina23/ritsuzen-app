@@ -33,7 +33,7 @@ const VIEWS_WITHOUT_COMPETITION: AppView[] = ['career', 'data'];
  * 何がリセットされるのか分からず紛らわしい。
  * 参加者設定タブは画面内に専用の操作があるため除外している。
  */
-const VIEWS_WITHOUT_COMPETITION_ACTIONS: AppView[] = ['participants', 'career'];
+const VIEWS_WITHOUT_COMPETITION_ACTIONS: AppView[] = ['participants', 'career', 'data'];
 
 type ModalConfig = {
   title: string;

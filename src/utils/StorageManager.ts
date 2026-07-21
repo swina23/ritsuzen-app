@@ -386,6 +386,14 @@ export class StorageManager {
     );
   }
 
+  /**
+   * マスターを完全に削除する。**UIからは意図的に呼んでいない。**
+   *
+   * 削除しても過去の大会の記録にはmasterIdが残るため、同じ人を登録し直すと
+   * 別IDが振られ、通算成績がその人の中で2行に割れてしまう。
+   * 一覧から消したいだけなら isActive=false（無効化）を使うこと。
+   * 無効化ならIDが残るので、再登録時に元のマスターが有効に戻り成績が繋がる。
+   */
   deleteParticipantMaster(masterId: string): void {
     this.track(deleteDoc(doc(db, PARTICIPANT_MASTERS, masterId)), 'deleteParticipantMaster');
   }
