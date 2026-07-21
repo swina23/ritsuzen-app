@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { useCompetition } from '../contexts/CompetitionContext';
 import { ROUNDS_OPTIONS } from '../utils/constants';
+import { getTodayJapaneseDate } from '../utils/dateUtils';
 
 const CompetitionSetup: React.FC = () => {
   const { state, createCompetition } = useCompetition();
   const [name, setName] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  // toISOString()はUTCになるため、朝9時前に大会を作ると前日の日付になってしまう
+  const [date, setDate] = useState(getTodayJapaneseDate());
   const [handicapEnabled, setHandicapEnabled] = useState(true);
   const [enableRotation, setEnableRotation] = useState(true);
   const [roundsCount, setRoundsCount] = useState(5);

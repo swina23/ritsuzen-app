@@ -51,13 +51,24 @@ export const getCurrentJapaneseTime = (): string => {
 
 /**
  * 日本時間での今日の日付文字列を取得（YYYY-MM-DD形式）
+ *
+ * `new Date().toISOString()` はUTCに変換するため、JSTの0:00〜8:59に呼ぶと
+ * 前日の日付になってしまう。日付だけを扱う場面では必ずこちらを使うこと。
+ *
+ * 区切り文字の置換ではなくformatToPartsで組み立てているのは、
+ * ロケールの出力形式（"2026/07/21"なのか"2026年07月21日"なのか）に
+ * 依存させないため。<input type="date">のvalueは形式が崩れると空になる。
  */
 export const getTodayJapaneseDate = (): string => {
-  const now = new Date();
-  return now.toLocaleDateString('ja-JP', {
+  const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Asia/Tokyo',
     year: 'numeric',
     month: '2-digit',
     day: '2-digit'
-  }).replace(/\//g, '-');
+  }).formatToParts(new Date());
+
+  const get = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((part) => part.type === type)?.value ?? '';
+
+  return `${get('year')}-${get('month')}-${get('day')}`;
 };
