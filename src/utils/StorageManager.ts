@@ -343,6 +343,33 @@ export class StorageManager {
     this.track(setDoc(doc(db, COMPETITIONS, id), fields), 'saveCompetitionToHistory');
   }
 
+  /**
+   * 大会を1件削除する。テスト用に作った大会を残したくない場合に使う。
+   *
+   * 削除した大会の的中数は通算成績から外れる。通算は全大会から都度集計しているため、
+   * ここでドキュメントを消すだけで自動的にそうなる。
+   *
+   * 終了済みの大会でも「現在の大会」ポインタが指したままのことがあるため
+   * (recomputeDerived のコメント参照)、自分が指されていたらポインタも外す。
+   * 外さないと存在しないドキュメントを指したままになる。
+   */
+  deleteCompetition(competitionId: string): void {
+    const isCurrent = this.currentCompetitionId === competitionId;
+    if (isCurrent) {
+      this.lastSavedJson = null;
+    }
+
+    this.track(
+      (async () => {
+        if (isCurrent) {
+          await this.setCurrentPointer(null);
+        }
+        await deleteDoc(doc(db, COMPETITIONS, competitionId));
+      })(),
+      'deleteCompetition'
+    );
+  }
+
   getCompetitionHistory = (): Competition[] => this.historyCache;
 
   /** 全大会を取得 (現在の大会を含む)。通算集計はこちらを使う */
@@ -503,23 +530,6 @@ export class StorageManager {
   // === ユーティリティ ===
 
   getStorageInfo = (): StorageInfo => this.storageInfoCache;
-
-  /** 全データを削除する。Firestore上のドキュメントも消えるため取り消せない */
-  clearAllData(): void {
-    const targets = [
-      ...this.competitionsCache.map((c) => doc(db, COMPETITIONS, c.id)),
-      ...this.mastersCache.map((m) => doc(db, PARTICIPANT_MASTERS, m.id)),
-      doc(db, APP_STATE, CURRENT_DOC),
-    ];
-
-    this.lastSavedJson = null;
-    this.currentCompetitionId = null;
-
-    this.track(
-      this.commitInChunks(targets, (batch, target) => batch.delete(target)),
-      'clearAllData'
-    );
-  }
 
   /** writeBatchの上限を超えないよう分割してコミットする */
   private async commitInChunks<T>(
