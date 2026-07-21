@@ -19,7 +19,7 @@ import { formatRank } from '../utils/formatters';
 import { RANK_OPTIONS } from '../utils/constants';
 import { storageManager } from '../utils/StorageManager';
 import { useParticipantMasters } from '../hooks/useStorage';
-import { sortMastersByUsage, sortParticipantsByOrder, filterByRank } from '../utils/arrayUtils';
+import { sortMastersByRegistration, sortParticipantsByOrder, filterByRank } from '../utils/arrayUtils';
 import { getGroupInfo, groupParticipants } from '../utils/grouping';
 import SortableParticipantItem from './SortableParticipantItem';
 
@@ -46,7 +46,7 @@ const ParticipantSetup: React.FC = () => {
 
   // マスター一覧はFirestoreの購読から供給されるため、手動での再読み込みは不要
   const activeMasters = useParticipantMasters();
-  const masters = useMemo(() => sortMastersByUsage(activeMasters), [activeMasters]);
+  const masters = useMemo(() => sortMastersByRegistration(activeMasters), [activeMasters]);
 
   const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
@@ -235,7 +235,6 @@ const ParticipantSetup: React.FC = () => {
                       <span className="master-info">
                         <span className="master-name">{master.name}</span>
                         <span className="master-rank">({formatRank(master.rank)})</span>
-                        <span className="master-usage">使用回数: {master.usageCount}</span>
                       </span>
                     </label>
                   </div>

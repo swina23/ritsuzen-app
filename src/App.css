@@ -939,14 +939,6 @@
   font-size: 14px;
 }
 
-.master-usage {
-  color: #6c757d;
-  font-size: 12px;
-  background-color: #e9ecef;
-  padding: 2px 6px;
-  border-radius: 3px;
-}
-
 .new-participant-section {
   background-color: white;
   border: 1px solid #dee2e6;
@@ -1023,15 +1015,6 @@
 
 .master-details .master-rank {
   color: #6c757d;
-}
-
-.master-details .master-usage,
-.master-details .master-last-used {
-  font-size: 12px;
-  color: #6c757d;
-  background-color: #e9ecef;
-  padding: 2px 6px;
-  border-radius: 3px;
 }
 
 .inactive-badge {

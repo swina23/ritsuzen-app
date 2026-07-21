@@ -253,8 +253,23 @@ export class StorageManager {
     this.pendingFromMetadata.masters ||
     this.pendingFromMetadata.appState;
 
+  /** 同一ミリ秒に採番されたID同士の順序を決めるための連番 */
+  private idSequence = 0;
+
+  /**
+   * IDを採番する。
+   *
+   * マスター一覧はID順（＝登録順）で並べるため、IDは必ず採番した順に並ぶ必要がある。
+   * ところがDate.now()だけだと、一括インポートのように同期ループで連続採番したとき
+   * 全件が同じミリ秒になり、残るランダム部分で順序が決まってしまう。
+   * 旧アプリからの移行はこの経路を通るため、連番を挟んで採番順を保証する。
+   *
+   * 連番は36進4桁に揃える。桁数が揃っていないと辞書順が数値順とずれるため。
+   * 4桁で足りなくなるのは1セッションで約168万件を採番した場合で、到達しない。
+   */
   private generateId(): string {
-    return `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+    const sequence = (this.idSequence++).toString(36).padStart(4, '0');
+    return `${Date.now()}-${sequence}-${Math.random().toString(36).slice(2, 11)}`;
   }
 
   /** 現在の大会を指すポインタを更新する */

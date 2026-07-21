@@ -25,24 +25,6 @@ export const formatJapaneseDateTime = (isoString: string): string => {
 };
 
 /**
- * ISO日時文字列を日本時間の日付文字列に変換
- */
-export const formatJapaneseDate = (isoString: string): string => {
-  try {
-    const date = new Date(isoString);
-    return date.toLocaleDateString('ja-JP', {
-      timeZone: 'Asia/Tokyo',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit'
-    });
-  } catch (error) {
-    console.error('Failed to format date:', error);
-    return isoString;
-  }
-};
-
-/**
  * 現在の日本時間のISO文字列を取得
  */
 export const getCurrentJapaneseTime = (): string => {

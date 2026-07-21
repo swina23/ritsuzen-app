@@ -75,16 +75,15 @@ export const moveParticipantDown = (participants: Participant[], participantId: 
 // === ソートユーティリティ ===
 
 /**
- * 参加者マスターを使用頻度順でソート
- * 使用回数が多い順、同じ場合は最終使用日時が新しい順
+ * 参加者マスターを登録順でソート
+ *
+ * idは `${Date.now()}-${ランダム}` で採番しているため、辞書順に並べると登録順になる。
+ * 以前は使用回数と最終使用日時で並べていたが、大会で使うたびに順番が変わるため
+ * 「さっき押した場所にさっきと違う人がいる」状態になり、無効化の押し間違いを招いていた。
+ * idは一度振ったら変わらないので、一覧の位置が動かない。
  */
-export const sortMastersByUsage = (masters: ParticipantMaster[]): ParticipantMaster[] => {
-  return [...masters].sort((a, b) => {
-    if (a.usageCount !== b.usageCount) {
-      return b.usageCount - a.usageCount;
-    }
-    return new Date(b.lastUsed).getTime() - new Date(a.lastUsed).getTime();
-  });
+export const sortMastersByRegistration = (masters: ParticipantMaster[]): ParticipantMaster[] => {
+  return [...masters].sort((a, b) => a.id.localeCompare(b.id));
 };
 
 /**

@@ -6,8 +6,7 @@ import React, { useState, useMemo } from 'react';
 import { storageManager } from '../../utils/StorageManager';
 import { useAllParticipantMasters } from '../../hooks/useStorage';
 import { formatRank } from '../../utils/formatters';
-import { sortMastersByUsage } from '../../utils/arrayUtils';
-import { formatJapaneseDate } from '../../utils/dateUtils';
+import { sortMastersByRegistration } from '../../utils/arrayUtils';
 import { RANK_OPTIONS } from '../../utils/constants';
 
 interface ParticipantMasterSectionProps {
@@ -18,7 +17,7 @@ const ParticipantMasterSection: React.FC<ParticipantMasterSectionProps> = ({
   onStatusUpdate 
 }) => {
   const allMasters = useAllParticipantMasters();
-  const masters = useMemo(() => sortMastersByUsage(allMasters), [allMasters]);
+  const masters = useMemo(() => sortMastersByRegistration(allMasters), [allMasters]);
   const [showMasters, setShowMasters] = useState(false);
   const [editTarget, setEditTarget] = useState<{ id: string; name: string; rank: number } | null>(null);
 
@@ -105,10 +104,6 @@ const ParticipantMasterSection: React.FC<ParticipantMasterSectionProps> = ({
                       <div className="master-details">
                         <strong>{master.name}</strong>
                         <span className="master-rank">({formatRank(master.rank)})</span>
-                        <span className="master-usage">使用回数: {master.usageCount}</span>
-                        <span className="master-last-used">
-                          最終使用: {formatJapaneseDate(master.lastUsed)}
-                        </span>
                         {!master.isActive && <span className="inactive-badge">無効</span>}
                       </div>
                       <div className="master-actions">
