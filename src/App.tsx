@@ -6,6 +6,7 @@ import CompetitionSetup from './components/CompetitionSetup';
 import ParticipantSetup from './components/ParticipantSetup';
 import ScoreInput from './components/ScoreInput';
 import Results from './components/Results';
+import CareerStats from './components/CareerStats';
 import DataManager from './components/DataManager';
 import ErrorBoundary from './components/ErrorBoundary';
 import CompetitionErrorBoundary from './components/error-boundaries/CompetitionErrorBoundary';
@@ -21,7 +22,10 @@ const VERSION = __APP_VERSION__;
 // クラウド版(ritsuzen-app2)でのみバッジを表示し、旧版と見分けられるようにする
 const IS_CLOUD = import.meta.env.VITE_APP_VARIANT === 'cloud';
 
-type AppView = 'setup' | 'participants' | 'scoring' | 'results' | 'data';
+type AppView = 'setup' | 'participants' | 'scoring' | 'results' | 'career' | 'data';
+
+/** 進行中の大会が無くても開けるタブ（過去の記録を見るため） */
+const VIEWS_WITHOUT_COMPETITION: AppView[] = ['career', 'data'];
 
 type ModalConfig = {
   title: string;
@@ -104,7 +108,7 @@ const AppContent: React.FC = () => {
       return <div className="auth-loading">データを読み込み中…</div>;
     }
 
-    if (!state.competition && currentView !== 'data') {
+    if (!state.competition && !VIEWS_WITHOUT_COMPETITION.includes(currentView)) {
       return (
         <CompetitionErrorBoundary section="general" onError={handleError}>
           <CompetitionSetup />
@@ -135,6 +139,12 @@ const AppContent: React.FC = () => {
         return (
           <CompetitionErrorBoundary section="results" onError={handleError}>
             <Results />
+          </CompetitionErrorBoundary>
+        );
+      case 'career':
+        return (
+          <CompetitionErrorBoundary section="results" onError={handleError}>
+            <CareerStats />
           </CompetitionErrorBoundary>
         );
       case 'data':
@@ -209,7 +219,13 @@ const AppContent: React.FC = () => {
         >
           結果表示
         </button>
-        <button 
+        <button
+          onClick={() => setCurrentView('career')}
+          className={currentView === 'career' ? 'active' : ''}
+        >
+          通算成績
+        </button>
+        <button
           onClick={() => setCurrentView('data')}
           className={currentView === 'data' ? 'active' : ''}
         >

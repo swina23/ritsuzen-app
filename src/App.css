@@ -1828,3 +1828,26 @@
 .participant-item:active {
   cursor: grabbing;
 }
+
+/* 通算成績タブ */
+.career-stats-header {
+  margin-bottom: 20px;
+}
+
+.career-stats h2 {
+  color: #2c3e50;
+  margin-bottom: 8px;
+}
+
+.career-stats-note {
+  color: #666;
+  font-size: 14px;
+}
+
+.career-stats-empty {
+  background-color: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+  color: #666;
+  line-height: 1.6;
+}

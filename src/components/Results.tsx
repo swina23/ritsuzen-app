@@ -5,6 +5,8 @@ import { formatRank } from '../utils/formatters';
 import { getShotDisplay, getShotClass } from '../utils/shotHelpers';
 import { sortRecordsByScore } from '../utils/arrayUtils';
 import { calculateRankings } from '../utils/calculations';
+import { calculateCareerStats } from '../utils/careerStats';
+import { useAllCompetitions, useAllParticipantMasters } from '../hooks/useStorage';
 
 const Results: React.FC = () => {
   const { state } = useCompetition();
@@ -25,14 +27,23 @@ const Results: React.FC = () => {
     return record.rank;
   }, [state.competition?.handicapEnabled]);
 
+  // Excelの2枚目シート用。CSVには含めない（1大会分の表という位置づけのため）
+  const allCompetitions = useAllCompetitions();
+  const masters = useAllParticipantMasters();
+  const careerStats = useMemo(
+    () => calculateCareerStats(allCompetitions, masters),
+    [allCompetitions, masters]
+  );
+
   const exportData = useMemo(() => {
     if (!state.competition) return null;
     return {
       competition: state.competition,
       participants: state.competition.participants,
-      records: state.competition.records
+      records: state.competition.records,
+      careerStats
     };
-  }, [state.competition]);
+  }, [state.competition, careerStats]);
 
   const handleExcelExport = useCallback(async () => {
     if (exportData) {

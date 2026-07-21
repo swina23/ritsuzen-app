@@ -2,12 +2,76 @@ import * as ExcelJS from 'exceljs';
 import { Competition, Participant, ParticipantRecord } from '../types';
 import { formatRank } from './formatters';
 import { calculateRankings } from './calculations';
+import { CareerStat } from './careerStats';
 
 export interface ExcelExportData {
   competition: Competition;
   participants: Participant[];
   records: ParticipantRecord[];
+  /** 全大会を横断した通算成績。渡すと2枚目のシートとして出力される */
+  careerStats?: CareerStat[];
 }
+
+/**
+ * ワークブックに「通算成績」シートを追加する。
+ * 当該大会の結果だけでなく、その時点での通算成績も一緒に配れるようにするため。
+ */
+const addCareerStatsSheet = (workbook: ExcelJS.Workbook, careerStats: CareerStat[]): void => {
+  const sheet = workbook.addWorksheet('通算成績');
+
+  sheet.mergeCells('A1:G1');
+  sheet.getCell('A1').value = '通算成績';
+  sheet.getCell('A1').font = { bold: true, size: 14 };
+  sheet.getCell('A1').alignment = { horizontal: 'center' };
+  sheet.getCell('A2').value = '通算的中率 = 総的中 ÷ 総射数（各大会の的中率の平均ではありません）';
+
+  sheet.addRow([]);
+
+  const headerRow = sheet.addRow([
+    '順位', '参加者', '段位', '出場数', '総射数', '総的中', '通算的中率'
+  ]);
+  headerRow.eachCell((cell) => {
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6E6E6' } };
+    cell.font = { bold: true };
+    cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    cell.border = {
+      top: { style: 'thin' },
+      left: { style: 'thin' },
+      bottom: { style: 'thin' },
+      right: { style: 'thin' }
+    };
+  });
+
+  careerStats.forEach((stat) => {
+    const row = sheet.addRow([
+      stat.order,
+      stat.name,
+      formatRank(stat.rank),
+      stat.competitionsCount,
+      stat.totalShots,
+      stat.totalHits,
+      // 数値として入れ、表示だけパーセント書式にする（Excel側で並べ替え・集計できるように）
+      stat.hitRate
+    ]);
+    row.eachCell((cell) => {
+      cell.border = {
+        top: { style: 'thin' },
+        left: { style: 'thin' },
+        bottom: { style: 'thin' },
+        right: { style: 'thin' }
+      };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    });
+    row.getCell(2).alignment = { horizontal: 'left', vertical: 'middle' };
+    row.getCell(7).numFmt = '0.0%';
+  });
+
+  // 行を追加した後に sheet.columns へ代入すると既存行が壊れることがあるため、
+  // 既存シートと同じく getColumn で個別に設定する
+  [6, 16, 8, 8, 10, 10, 12].forEach((width, index) => {
+    sheet.getColumn(index + 1).width = width;
+  });
+};
 
 /**
  * 出力直前に順位を最新ロジックで計算し直す。
@@ -416,6 +480,11 @@ export const exportToExcelWithBorders = async (data: ExcelExportData): Promise<v
     }
   });
   
+  // 2枚目のシート: 通算成績（渡されたときだけ）
+  if (data.careerStats && data.careerStats.length > 0) {
+    addCareerStatsSheet(workbook, data.careerStats);
+  }
+
   // ファイルを書き込み
   const buffer = await workbook.xlsx.writeBuffer();
   const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });

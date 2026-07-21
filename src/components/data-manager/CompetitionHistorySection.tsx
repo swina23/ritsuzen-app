@@ -3,8 +3,9 @@
  */
 
 import React from 'react';
-import { useCompetitionHistory } from '../../hooks/useStorage';
+import { useAllCompetitions, useAllParticipantMasters, useCompetitionHistory } from '../../hooks/useStorage';
 import { exportToExcelWithBorders, exportToCSV } from '../../utils/excelExport';
+import { calculateCareerStats } from '../../utils/careerStats';
 import { Competition } from '../../types';
 
 interface CompetitionHistorySectionProps {
@@ -15,13 +16,17 @@ const CompetitionHistorySection: React.FC<CompetitionHistorySectionProps> = ({
   onStatusUpdate 
 }) => {
   const competitionHistory = useCompetitionHistory();
+  // Excelの2枚目シート用。過去の大会を出力するときも通算成績は「現時点の値」を載せる
+  const allCompetitions = useAllCompetitions();
+  const masters = useAllParticipantMasters();
 
   const handleExportHistoryExcel = async (competition: Competition) => {
     try {
       await exportToExcelWithBorders({
         competition,
         participants: competition.participants,
-        records: competition.records
+        records: competition.records,
+        careerStats: calculateCareerStats(allCompetitions, masters)
       });
       onStatusUpdate(`✅ ${competition.name}をExcel出力しました`);
     } catch (error) {
