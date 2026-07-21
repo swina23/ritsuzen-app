@@ -27,6 +27,14 @@ type AppView = 'setup' | 'participants' | 'scoring' | 'results' | 'career' | 'da
 /** 進行中の大会が無くても開けるタブ（過去の記録を見るため） */
 const VIEWS_WITHOUT_COMPETITION: AppView[] = ['career', 'data'];
 
+/**
+ * 「大会終了」「リセット」ボタンを出さないタブ。
+ * どちらも現在の大会に対する操作なので、大会と関係ない画面に置くと
+ * 何がリセットされるのか分からず紛らわしい。
+ * 参加者設定タブは画面内に専用の操作があるため除外している。
+ */
+const VIEWS_WITHOUT_COMPETITION_ACTIONS: AppView[] = ['participants', 'career'];
+
 type ModalConfig = {
   title: string;
   message: string;
@@ -237,7 +245,7 @@ const AppContent: React.FC = () => {
         {renderView()}
       </main>
 
-      {state.competition && currentView !== 'participants' && (
+      {state.competition && !VIEWS_WITHOUT_COMPETITION_ACTIONS.includes(currentView) && (
         <div className="app-actions">
           {state.competition.status !== 'finished' && (
             <button
