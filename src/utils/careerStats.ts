@@ -25,48 +25,18 @@ export interface CareerStat {
   order: number;
 }
 
-/** masterIdが無い参加者は氏名で名寄せする（旧データや「マスターに保存」しなかった手入力分） */
+/**
+ * 名寄せキー。masterIdがあればそれ、無ければ氏名。
+ *
+ * masterIdが無いのは「マスターに保存」せず手入力した参加者（ゲスト等）で、
+ * そういう人は氏名でしか区別できないためこのフォールバックを残す。
+ *
+ * 以前は氏名からmasterIdを逆引きして寄せる処理があったが、旧アプリからの
+ * 移行データにmasterIdを書き戻した時点で不要になったので削除した。
+ * 逆引きは無関係な同姓同名のゲストを同一人物として統合してしまう危険があった。
+ */
 const buildKey = (masterId: string | undefined, name: string): string =>
   masterId ? `master:${masterId}` : `name:${name}`;
-
-/**
- * 「氏名 → masterId」の対応表を作る。
- *
- * 同じ人でも、masterId紐付けを導入する前に記録した大会や旧アプリから移行した
- * データにはmasterIdが無い。キーがmaster:xxxとname:xxxに割れると同じ人が
- * 2行に分かれてしまうため、氏名が一致するならmasterId側へ寄せる。
- *
- * ただし同じ氏名に複数のmasterIdがぶら下がる場合（同姓同名がマスターに2件ある等）は
- * 寄せ先を決められないので対応表から除外し、氏名キーのまま別行として残す。
- * 別人を勝手に統合してしまう方が害が大きいため、安全側に倒す。
- */
-const buildMasterIdByName = (
-  competitions: Competition[],
-  masters: ParticipantMaster[]
-): Map<string, string> => {
-  const candidates = new Map<string, Set<string>>();
-
-  const register = (name: string, masterId: string): void => {
-    const ids = candidates.get(name) ?? new Set<string>();
-    ids.add(masterId);
-    candidates.set(name, ids);
-  };
-
-  // マスター一覧と、実際の大会参加者の両方から拾う。
-  // マスター管理画面で登録しただけでまだ出場していない人も対象にするため
-  masters.forEach((master) => register(master.name, master.id));
-  competitions.forEach((competition) => {
-    competition.participants.forEach((participant) => {
-      if (participant.masterId) register(participant.name, participant.masterId);
-    });
-  });
-
-  const resolved = new Map<string, string>();
-  candidates.forEach((ids, name) => {
-    if (ids.size === 1) resolved.set(name, ids.values().next().value!);
-  });
-  return resolved;
-};
 
 interface Accumulator {
   key: string;
@@ -100,7 +70,6 @@ export const calculateCareerStats = (
   masters: ParticipantMaster[]
 ): CareerStat[] => {
   const accumulators = new Map<string, Accumulator>();
-  const masterIdByName = buildMasterIdByName(competitions, masters);
 
   competitions.forEach((competition) => {
     const sortKey = buildSortKey(competition);
@@ -124,8 +93,7 @@ export const calculateCareerStats = (
       // 登録だけして一射もしていない人は出場としてカウントしない
       if (shots === 0) return;
 
-      // masterIdが無い記録も、同じ氏名のmasterIdが一意に決まるならそちらへ寄せる
-      const masterId = participant.masterId ?? masterIdByName.get(participant.name);
+      const masterId = participant.masterId;
       const key = buildKey(masterId, participant.name);
       const existing = accumulators.get(key);
 

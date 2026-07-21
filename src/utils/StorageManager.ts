@@ -439,8 +439,8 @@ export class StorageManager {
       }
 
       // 氏名は前後の空白を落として比較・保存する。
-      // 空白付きのまま取り込むと見た目が同じ別マスターができてしまい、
-      // 通算成績の名寄せ(careerStatsのbuildMasterIdByName)が効かなくなるため。
+      // 空白付きのまま取り込むと見た目が同じ別マスターが2件並び、
+      // 一覧でどちらを選んだかで通算成績が2行に割れてしまうため。
       const existingNames = new Set(this.mastersCache.map((m) => m.name.trim()));
       const now = new Date().toISOString();
 
