@@ -47,8 +47,8 @@ const ParticipantMasterSection: React.FC<ParticipantMasterSectionProps> = ({
       return;
     }
 
+    // 一覧の表示がその場で変わるので完了メッセージは出さない
     storageManager.updateParticipantMaster(editTarget.id, { name, rank: editTarget.rank });
-    onStatusUpdate(`✅ 「${name}」を更新しました`);
     setEditTarget(null);
   };
 

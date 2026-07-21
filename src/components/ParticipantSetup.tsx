@@ -68,6 +68,8 @@ const ParticipantSetup: React.FC = () => {
           if (!existingMaster.isActive) {
             storageManager.updateParticipantMaster(existingMaster.id, { isActive: true });
           }
+          // 手入力でも大会に出す以上は「使用」なので、一覧から選んだときと同じく数える
+          storageManager.incrementMasterUsage(existingMaster.id);
         } else {
           try {
             // IDはクライアント側で採番されるため戻り値は同期的に得られる

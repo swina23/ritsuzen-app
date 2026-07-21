@@ -360,16 +360,21 @@ export class StorageManager {
     return newMaster;
   }
 
+  /**
+   * マスターの内容を書き換える（無効化/有効化、氏名・段位の訂正）。
+   *
+   * lastUsedは更新しない。「最後に大会で使った日時」という意味の値であり、
+   * 無効化や改名は使用ではないため。以前はここで現在時刻を書いていたが、
+   * 一覧が使用回数→最終使用日時の順に並ぶため、無効化するとその行が
+   * 上に飛んで別の人を押してしまう不具合になっていた。
+   * 使用としてのカウントは incrementMasterUsage が担当する。
+   */
   updateParticipantMaster(masterId: string, updates: Partial<ParticipantMaster>): void {
     // idはドキュメントIDで表現するのでフィールドとしては書き込まない
     const fields = { ...updates };
     delete fields.id;
     this.track(
-      setDoc(
-        doc(db, PARTICIPANT_MASTERS, masterId),
-        { ...fields, lastUsed: new Date().toISOString() },
-        { merge: true }
-      ),
+      setDoc(doc(db, PARTICIPANT_MASTERS, masterId), fields, { merge: true }),
       'updateParticipantMaster'
     );
   }
