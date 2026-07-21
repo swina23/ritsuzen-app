@@ -22,10 +22,10 @@ const ParticipantMasterSection: React.FC<ParticipantMasterSectionProps> = ({
   const [showMasters, setShowMasters] = useState(false);
   const [editTarget, setEditTarget] = useState<{ id: string; name: string; rank: number } | null>(null);
 
-  // 一覧はFirestoreの購読経由で自動更新されるため、手動での再読み込みは不要
+  // 一覧はFirestoreの購読経由で自動更新されるため、手動での再読み込みは不要。
+  // 「無効」バッジがその場で付くので完了メッセージは出さない
   const handleToggleMasterActive = (masterId: string, currentActive: boolean) => {
     storageManager.updateParticipantMaster(masterId, { isActive: !currentActive });
-    onStatusUpdate(`✅ 参加者を${currentActive ? '無効化' : '有効化'}しました`);
   };
 
   const handleSaveEdit = () => {
