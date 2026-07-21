@@ -29,15 +29,15 @@ const DangerSection: React.FC<DangerSectionProps> = ({ onStatusUpdate }) => {
         🗑️ 全データ削除
       </button>
       <p className="description">
-        ローカルに保存された全てのデータを削除します。
-        この操作は取り消すことができません。
+        クラウドに保存された全てのデータを削除します。
+        メンバー全員の端末から見えなくなり、この操作は取り消すことができません。
         削除前に必要なデータのエクスポートを行ってください。
       </p>
 
       <ConfirmModal
         isOpen={showModal}
         title="全データを削除しますか？"
-        message={"・現在の大会データが削除されます\n・全ての大会履歴が削除されます\n・参加者マスターが削除されます\n・この操作は取り消せません\n\n※出力済みのファイルは削除されません"}
+        message={"・現在の大会データが削除されます\n・全ての大会履歴が削除されます\n・参加者マスターが削除されます\n・通算成績も空になります\n・クラウド上のデータなので、メンバー全員の端末から消えます\n・この操作は取り消せません\n\n※出力済みのファイルは削除されません"}
         confirmLabel="削除する"
         danger={true}
         onConfirm={handleClearAll}
