@@ -29,7 +29,7 @@ const CompetitionSetup: React.FC = () => {
         <div className="active-competition-warning">
           <p>⚠️ 現在大会が進行中です。</p>
           <p>「{state.competition?.name}」</p>
-          <p>新しい大会を作成するには、現在の大会をリセットしてください。</p>
+          <p>新しい大会を作成するには、現在の大会を終了してください。</p>
         </div>
       )}
       
@@ -103,7 +103,7 @@ const CompetitionSetup: React.FC = () => {
           type="submit"
           className="create-btn"
           disabled={hasActiveCompetition}
-          title={hasActiveCompetition ? '現在の大会をリセットしてから新規作成してください' : ''}
+          title={hasActiveCompetition ? '現在の大会を終了してから新規作成してください' : ''}
         >
           大会を作成
         </button>

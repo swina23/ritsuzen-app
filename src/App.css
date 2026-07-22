@@ -189,7 +189,7 @@
   gap: 10px;
 }
 
-.finish-btn, .reset-btn {
+.finish-btn {
   padding: 10px 20px;
   border: none;
   border-radius: 4px;
@@ -205,15 +205,6 @@
 
 .finish-btn:hover:not(:disabled) {
   background-color: #45a049;
-}
-
-.reset-btn {
-  background-color: #f44336;
-  color: white;
-}
-
-.reset-btn:hover {
-  background-color: #da190b;
 }
 
 .finish-btn:disabled {

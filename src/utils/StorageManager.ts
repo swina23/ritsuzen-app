@@ -280,28 +280,8 @@ export class StorageManager {
 
   // === 現在の大会管理 ===
 
-  /**
-   * 現在の大会を保存。null を渡すと「現在の大会なし」になり、
-   * 未終了の大会だったdocumentは削除される(旧版のリセット挙動と同じ)。
-   */
-  saveCurrentCompetition(competition: Competition | null): void {
-    if (!competition) {
-      this.lastSavedJson = null;
-      const current = this.loadCurrentCompetition();
-      const shouldDelete = current !== null && current.status !== 'finished';
-      const currentId = current?.id;
-      this.track(
-        (async () => {
-          await this.setCurrentPointer(null);
-          if (shouldDelete && currentId) {
-            await deleteDoc(doc(db, COMPETITIONS, currentId));
-          }
-        })(),
-        'saveCurrentCompetition'
-      );
-      return;
-    }
-
+  /** 進行中の大会を保存する。終了させるときは finishCurrentCompetition を使う */
+  saveCurrentCompetition(competition: Competition): void {
     const json = JSON.stringify(competition);
     if (json === this.lastSavedJson) return;
     this.lastSavedJson = json;
@@ -322,6 +302,37 @@ export class StorageManager {
       })(),
       'saveCurrentCompetition'
     );
+  }
+
+  /**
+   * 大会を終了状態で保存し、「現在の大会」ポインタを外す。
+   * ドキュメントは残るので、履歴・通算成績からは今まで通り参照できる。
+   *
+   * 大会を途中で破棄する手段は用意していない。破棄したい場合も一度終了させ、
+   * データ管理画面から deleteCompetition する。
+   */
+  finishCurrentCompetition(competition: Competition): void {
+    this.lastSavedJson = null;
+    this.currentCompetitionId = null;
+
+    const { id, ...fields } = competition;
+    this.track(
+      (async () => {
+        await setDoc(doc(db, COMPETITIONS, id), fields);
+        await this.setCurrentPointer(null);
+      })(),
+      'finishCurrentCompetition'
+    );
+  }
+
+  /**
+   * 「現在の大会」ポインタだけを外す。大会ドキュメントには触れない。
+   * 旧版が残した「終了済みなのに現在の大会のまま」の状態を直すために使う。
+   */
+  releaseCurrentCompetition(): void {
+    if (!this.currentCompetitionId) return;
+    this.lastSavedJson = null;
+    this.track(this.setCurrentPointer(null), 'releaseCurrentCompetition');
   }
 
   /** 現在の大会を読み込み */
