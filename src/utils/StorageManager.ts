@@ -328,6 +328,9 @@ export class StorageManager {
   /**
    * 「現在の大会」ポインタだけを外す。大会ドキュメントには触れない。
    * 旧版が残した「終了済みなのに現在の大会のまま」の状態を直すために使う。
+   *
+   * currentCompetitionId は setCurrentPointer が同期的に落とすため、ここでの
+   * 明示的なクリアは不要。await の後で呼ぶ finishCurrentCompetition とは異なる。
    */
   releaseCurrentCompetition(): void {
     if (!this.currentCompetitionId) return;
