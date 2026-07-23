@@ -15,6 +15,9 @@ interface CompetitionHistorySectionProps {
   onStatusUpdate: (message: string) => void;
 }
 
+/** 初期表示する大会数。古い大会まで一覧に出すと目的の大会を探しにくいので畳んでおく */
+const INITIAL_VISIBLE_COUNT = 10;
+
 const CompetitionHistorySection: React.FC<CompetitionHistorySectionProps> = ({
   onStatusUpdate
 }) => {
@@ -24,6 +27,7 @@ const CompetitionHistorySection: React.FC<CompetitionHistorySectionProps> = ({
   // リロードしないとヘッダーや結果画面に消したはずの大会が残り続けてしまう。
   const { state } = useCompetition();
   const [deleteTarget, setDeleteTarget] = useState<Competition | null>(null);
+  const [showAll, setShowAll] = useState(false);
   // Excelの2枚目シート用。過去の大会を出力するときも通算成績は「現時点の値」を載せる
   const allCompetitions = useAllCompetitions();
   const masters = useAllParticipantMasters();
@@ -80,7 +84,7 @@ const CompetitionHistorySection: React.FC<CompetitionHistorySectionProps> = ({
         <p>保存された大会がありません</p>
       ) : (
         <div className="history-list">
-          {competitionHistory.slice(0, 10).map((competition) => (
+          {(showAll ? competitionHistory : competitionHistory.slice(0, INITIAL_VISIBLE_COUNT)).map((competition) => (
             <div key={competition.id} className="history-item">
               <div className="competition-info">
                 <div className="competition-details">
@@ -122,8 +126,17 @@ const CompetitionHistorySection: React.FC<CompetitionHistorySectionProps> = ({
               </div>
             </div>
           ))}
-          {competitionHistory.length > 10 && (
-            <p className="more-text">他 {competitionHistory.length - 10}件...</p>
+          {competitionHistory.length > INITIAL_VISIBLE_COUNT && (
+            <button
+              type="button"
+              className="history-toggle-btn"
+              aria-expanded={showAll}
+              onClick={() => setShowAll(!showAll)}
+            >
+              {showAll
+                ? '折りたたむ'
+                : `他 ${competitionHistory.length - INITIAL_VISIBLE_COUNT}件を表示`}
+            </button>
           )}
         </div>
       )}
