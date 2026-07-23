@@ -5,9 +5,17 @@
  * 「全大会の的中合計 ÷ 全大会の射数合計」で出す。
  * 大会ごとに射数が違うため、単純平均だと射数の少ない大会の
  * 出来不出来が過大に効いてしまうため。
+ *
+ * 出場数が少ない人は順位を付けない。1回だけ出た人の的中率は
+ * まぐれにも不調にも大きく振れるため、常連と同じ土俵で並べると
+ * ランキングそのものが意味を持たなくなる。集計と表示からは外さない。
+ * 本人が自分の記録を見られなくなってしまうため。
  */
 
 import { Competition, ParticipantMaster } from '../types';
+
+/** 順位を付ける最低出場数。これ未満は order=0（順位外）になる */
+export const RANKING_MIN_COMPETITIONS = 3;
 
 export interface CareerStat {
   /** 名寄せキー。masterIdがあればそれ、無ければ氏名 */
@@ -21,8 +29,10 @@ export interface CareerStat {
   totalHits: number;
   /** totalHits / totalShots。射数0なら0 */
   hitRate: number;
-  /** 通算的中率の順位（同率は同順位） */
+  /** 通算的中率の順位（同率は同順位）。順位外は0 */
   order: number;
+  /** 順位を付ける対象か。falseなら出場数が足りず順位外 */
+  ranked: boolean;
 }
 
 /**
@@ -139,19 +149,23 @@ export const calculateCareerStats = (
       totalHits: acc.totalHits,
       hitRate: acc.totalShots > 0 ? acc.totalHits / acc.totalShots : 0,
       order: 0,
+      ranked: acc.competitionIds.size >= RANKING_MIN_COMPETITIONS,
     };
   });
 
   // 的中率が同じなら射数の多い方を上に（母数が多い方が信頼できるため）
-  stats.sort((a, b) => {
+  const byHitRate = (a: CareerStat, b: CareerStat): number => {
     if (b.hitRate !== a.hitRate) return b.hitRate - a.hitRate;
     if (b.totalShots !== a.totalShots) return b.totalShots - a.totalShots;
     return a.name.localeCompare(b.name, 'ja');
-  });
+  };
+  // 順位外は的中率に関係なく末尾へまとめる
+  stats.sort((a, b) => (a.ranked !== b.ranked ? (a.ranked ? -1 : 1) : byHitRate(a, b)));
 
   // 同率は同順位にする（例: 1位・1位・3位）
-  stats.forEach((stat, index) => {
-    const previous = stats[index - 1];
+  const ranked = stats.filter((stat) => stat.ranked);
+  ranked.forEach((stat, index) => {
+    const previous = ranked[index - 1];
     stat.order = previous && previous.hitRate === stat.hitRate ? previous.order : index + 1;
   });
 

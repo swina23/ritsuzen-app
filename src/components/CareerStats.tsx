@@ -11,7 +11,7 @@
 
 import React, { useMemo } from 'react';
 import { useAllCompetitions, useAllParticipantMasters, useStorageKind } from '../hooks/useStorage';
-import { calculateCareerStats, formatHitRate } from '../utils/careerStats';
+import { calculateCareerStats, formatHitRate, RANKING_MIN_COMPETITIONS } from '../utils/careerStats';
 import { formatRank } from '../utils/formatters';
 
 /** 端末保存モードで集計対象にする大会数 */
@@ -59,6 +59,11 @@ const CareerStats: React.FC = () => {
             ? `集計対象: 直近${competitions.length}大会 ／ 通算的中率は「総的中 ÷ 総射数」で計算しています`
             : `集計対象: ${competitions.length}大会 ／ 通算的中率は「総的中 ÷ 総射数」で計算しています`}
         </p>
+        {stats.some((stat) => !stat.ranked) && (
+          <p className="career-stats-note">
+            出場{RANKING_MIN_COMPETITIONS}回未満の方は的中率が振れやすいため、順位を付けずに下にまとめています。
+          </p>
+        )}
         {hiddenCount > 0 && (
           <p className="career-stats-locked">
             🔒 保存済みの{allCompetitions.length}大会のうち、直近{LOCAL_COMPETITION_LIMIT}大会だけを集計しています。
@@ -82,8 +87,8 @@ const CareerStats: React.FC = () => {
           </thead>
           <tbody>
             {stats.map((stat) => (
-              <tr key={stat.key}>
-                <td className="rank">{stat.order}</td>
+              <tr key={stat.key} className={stat.ranked ? undefined : 'career-stats-unranked'}>
+                <td className="rank">{stat.ranked ? stat.order : '―'}</td>
                 <td>{stat.name}</td>
                 <td>{formatRank(stat.rank)}</td>
                 <td>{stat.competitionsCount}</td>

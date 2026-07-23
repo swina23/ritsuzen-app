@@ -2,7 +2,7 @@ import * as ExcelJS from 'exceljs';
 import { Competition, Participant, ParticipantRecord } from '../types';
 import { formatRank } from './formatters';
 import { calculateRankings } from './calculations';
-import { CareerStat } from './careerStats';
+import { CareerStat, RANKING_MIN_COMPETITIONS } from './careerStats';
 
 export interface ExcelExportData {
   competition: Competition;
@@ -43,6 +43,7 @@ const addCareerStatsSheet = (workbook: ExcelJS.Workbook, careerStats: CareerStat
   sheet.getCell('A1').font = { bold: true, size: 14 };
   sheet.getCell('A1').alignment = { horizontal: 'center' };
   sheet.getCell('A2').value = '通算的中率 = 総的中 ÷ 総射数（各大会の的中率の平均ではありません）';
+  sheet.getCell('A3').value = `※出場${RANKING_MIN_COMPETITIONS}回未満の方は順位を付けず、末尾にまとめています`;
 
   sheet.addRow([]);
 
@@ -63,7 +64,7 @@ const addCareerStatsSheet = (workbook: ExcelJS.Workbook, careerStats: CareerStat
 
   careerStats.forEach((stat) => {
     const row = sheet.addRow([
-      stat.order,
+      stat.ranked ? stat.order : '―',
       stat.name,
       formatRank(stat.rank),
       stat.competitionsCount,
