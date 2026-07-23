@@ -2,17 +2,37 @@
  * 通算成績タブ
  *
  * 保存済みの全大会を横断して、参加者ごとの通算的中率を表示する。
- * 開催中の大会もFirestoreに逐次保存されているため、集計対象に含まれる。
+ * 開催中の大会も逐次保存されているため、集計対象に含まれる。
+ *
+ * この端末に保存するモード(未ログイン)では、集計対象を直近の数大会に絞る。
+ * 画面自体は隠さない。何が見られるようになるのかが分からないと、
+ * クラウド保存に切り替える理由も伝わらないため。
  */
 
 import React, { useMemo } from 'react';
-import { useAllCompetitions, useAllParticipantMasters } from '../hooks/useStorage';
+import { useAllCompetitions, useAllParticipantMasters, useStorageKind } from '../hooks/useStorage';
 import { calculateCareerStats, formatHitRate } from '../utils/careerStats';
 import { formatRank } from '../utils/formatters';
 
+/** 端末保存モードで集計対象にする大会数 */
+const LOCAL_COMPETITION_LIMIT = 3;
+
 const CareerStats: React.FC = () => {
-  const competitions = useAllCompetitions();
+  const allCompetitions = useAllCompetitions();
   const masters = useAllParticipantMasters();
+  const storageKind = useStorageKind();
+  const isLimited = storageKind === 'local';
+
+  const competitions = useMemo(() => {
+    if (!isLimited) return allCompetitions;
+    // 日付の降順で直近から。同じ日付が並んでも順序が入れ替わらないよう
+    // localeCompare の結果だけで比べる (sort は安定ソート)
+    return [...allCompetitions]
+      .sort((a, b) => (b.date || '').localeCompare(a.date || ''))
+      .slice(0, LOCAL_COMPETITION_LIMIT);
+  }, [allCompetitions, isLimited]);
+
+  const hiddenCount = allCompetitions.length - competitions.length;
 
   const stats = useMemo(
     () => calculateCareerStats(competitions, masters),
@@ -35,8 +55,16 @@ const CareerStats: React.FC = () => {
       <div className="career-stats-header">
         <h2>通算成績</h2>
         <p className="career-stats-note">
-          集計対象: {competitions.length}大会 ／ 通算的中率は「総的中 ÷ 総射数」で計算しています
+          {isLimited
+            ? `集計対象: 直近${competitions.length}大会 ／ 通算的中率は「総的中 ÷ 総射数」で計算しています`
+            : `集計対象: ${competitions.length}大会 ／ 通算的中率は「総的中 ÷ 総射数」で計算しています`}
         </p>
+        {hiddenCount > 0 && (
+          <p className="career-stats-locked">
+            🔒 保存済みの{allCompetitions.length}大会のうち、直近{LOCAL_COMPETITION_LIMIT}大会だけを集計しています。
+            クラウド保存に切り替えると全期間が集計対象になります。
+          </p>
+        )}
       </div>
 
       <div className="results-table">

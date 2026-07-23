@@ -1,13 +1,17 @@
 /**
- * Firestore操作を抽象化するStorageManagerクラス
+ * 保存先を抽象化するStorageManagerクラス
  *
  * 公開インターフェース(メソッド名・引数・戻り値の形)はlocalStorage版から変えていない。
- * 内部だけを「メモリキャッシュ + onSnapshot購読」に差し替えることで、
- * 呼び出し側の大半を無改修のまま Firestore に移行している。
+ * 内部だけを差し替えることで、呼び出し側の大半を無改修のまま移行してきた。
+ * 今回はさらにその内側で、保存先そのもの(Firestore / localStorage)を
+ * 実行時に差し替えられるようにしている。
  *
  *  - 読み取り: キャッシュから同期的に返す (購読が張られるまでは空)
- *  - 書き込み: Firestoreへ投げっぱなし。SDKがローカルキャッシュを即時更新し、
- *             オフライン中はIndexedDBにキューイングして復帰時に自動送信する。
+ *  - 書き込み: StorageBackend へ投げっぱなし。完了は track() で数えるだけ
+ *
+ * バックエンドが持つのは「購読」と「書き込み」だけ。キャッシュ・派生値の計算・
+ * 通知・ID採番・マスターの重複チェック・import/export はこのクラスに残し、
+ * バックエンド間で共有する (ロジックを二重に持たない)。
  *
  * 読み取り系は useSyncExternalStore から使えるよう、返す配列・オブジェクトを
  * スナップショットごとに1回だけ作り直して参照を安定させている。
@@ -17,30 +21,20 @@ import { Competition, ParticipantMaster } from '../types';
 import { logStorageError } from './errorUtils';
 import { normalizeCompetition } from './competitionMigration';
 import { formatJapaneseDateTime, getTodayJapaneseDate } from './dateUtils';
-import { db } from '../lib/firebase';
-import {
-  collection,
-  doc,
-  onSnapshot,
-  setDoc,
-  deleteDoc,
-  writeBatch,
-  increment,
-} from 'firebase/firestore';
-
-const COMPETITIONS = 'competitions';
-const PARTICIPANT_MASTERS = 'participantMasters';
-const APP_STATE = 'appState';
-const CURRENT_DOC = 'current';
-
-/** writeBatchの上限は500操作。余裕を持たせて分割する */
-const BATCH_CHUNK_SIZE = 450;
+import type {
+  MasterFields,
+  StorageBackend,
+  StorageKind,
+  StoredDoc,
+} from '../lib/storage/StorageBackend';
 
 export interface StorageInfo {
   size: string;
   itemCount: number;
   lastUpdated: string;
   totalSize: string;
+  /** 保存先の種別。データ管理画面の文言を出し分けるために持つ */
+  kind: StorageKind | null;
 }
 
 export interface ImportResult {
@@ -54,9 +48,13 @@ const EMPTY_STORAGE_INFO: StorageInfo = {
   totalSize: '0 KB',
   itemCount: 0,
   lastUpdated: '-',
+  kind: null,
 };
 
 export class StorageManager {
+  // === 保存先 ===
+  private backend: StorageBackend | null = null;
+
   // === キャッシュ (スナップショットのたびに作り直す) ===
   private competitionsCache: Competition[] = [];
   private historyCache: Competition[] = [];
@@ -76,10 +74,18 @@ export class StorageManager {
   private pendingWrites = 0;
 
   /**
-   * Firestore SDKが保持している未送信ミューテーションの有無。
+   * 保存先を切り替えるたびに増える通し番号。
+   * 切り替え前に投げた書き込みが後から解決したとき、それが「今のセッションの
+   * 書き込み」ではないと判別するために使う。
+   */
+  private sessionId = 0;
+
+  /**
+   * バックエンドが保持している未送信ミューテーションの有無。
    * pendingWrites はこのインスタンスが投げた書き込みしか数えられないため、
    * 「圏外で入力 → タブを閉じる → 開き直す」ケースを取りこぼす。
-   * IndexedDBに残ったキューはこちらのメタデータでしか分からない。
+   * IndexedDBに残ったキューはスナップショットのメタデータでしか分からない。
+   * (ローカル保存では常に false)
    */
   private pendingFromMetadata = { competitions: false, masters: false, appState: false };
 
@@ -89,26 +95,29 @@ export class StorageManager {
   // === 初期化・購読 ===
 
   /**
-   * Firestoreの購読を開始する。認証済みになってから1回だけ呼ぶこと。
+   * バックエンドを与えて購読を開始する。認証状態が確定してから呼ぶこと。
    * 複数回呼ばれても2回目以降は何もしない。
+   * 保存先を切り替えるときは、先に dispose() すること。
+   *
+   * ⚠️ 不変条件: 以下の購読コールバックは `this.unsubscribers` を読んではならない。
+   * LocalStorageBackend は初回スナップショットを**同期的に**流すため、
+   * `this.unsubscribers.push(...)` の引数を評価している最中にコールバックが走る。
+   * 触ってよいのはキャッシュ・readyFlags・notify() までとする。
    */
-  initialize(): void {
+  initialize(backend: StorageBackend): void {
     if (this.initialized) return;
     this.initialized = true;
+    this.backend = backend;
 
     this.unsubscribers.push(
-      onSnapshot(
-        collection(db, COMPETITIONS),
-        { includeMetadataChanges: true },
+      backend.subscribeCompetitions(
         (snapshot) => {
-          this.pendingFromMetadata.competitions = snapshot.metadata.hasPendingWrites;
+          this.pendingFromMetadata.competitions = snapshot.hasPendingWrites;
           // メタデータだけが変わった通知では、キャッシュを作り直すと
           // 参照が変わって無駄な再レンダーを招くのでスキップする
-          if (snapshot.docChanges().length > 0 || !this.readyFlags.competitions) {
+          if (snapshot.hasDocChanges || !this.readyFlags.competitions) {
             this.competitionsCache = snapshot.docs
-              .map((d) =>
-                normalizeCompetition({ ...(d.data() as Omit<Competition, 'id'>), id: d.id })
-              )
+              .map((d) => normalizeCompetition({ ...d.fields, id: d.id }))
               .sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
             this.readyFlags.competitions = true;
             this.recomputeDerived();
@@ -120,16 +129,11 @@ export class StorageManager {
     );
 
     this.unsubscribers.push(
-      onSnapshot(
-        collection(db, PARTICIPANT_MASTERS),
-        { includeMetadataChanges: true },
+      backend.subscribeParticipantMasters(
         (snapshot) => {
-          this.pendingFromMetadata.masters = snapshot.metadata.hasPendingWrites;
-          if (snapshot.docChanges().length > 0 || !this.readyFlags.masters) {
-            this.mastersCache = snapshot.docs.map((d) => ({
-              ...(d.data() as Omit<ParticipantMaster, 'id'>),
-              id: d.id,
-            }));
+          this.pendingFromMetadata.masters = snapshot.hasPendingWrites;
+          if (snapshot.hasDocChanges || !this.readyFlags.masters) {
+            this.mastersCache = snapshot.docs.map((d) => ({ ...d.fields, id: d.id }));
             this.readyFlags.masters = true;
             this.recomputeDerived();
           }
@@ -140,15 +144,16 @@ export class StorageManager {
     );
 
     this.unsubscribers.push(
-      onSnapshot(
-        doc(db, APP_STATE, CURRENT_DOC),
-        { includeMetadataChanges: true },
-        (snapshot) => {
-          this.pendingFromMetadata.appState = snapshot.metadata.hasPendingWrites;
-          const competitionId = snapshot.data()?.competitionId;
-          this.currentCompetitionId = typeof competitionId === 'string' ? competitionId : null;
-          this.readyFlags.appState = true;
-          this.recomputeDerived();
+      backend.subscribeAppState(
+        (competitionId, hasPendingWrites) => {
+          this.pendingFromMetadata.appState = hasPendingWrites;
+          // 上の2つと同じ理由。クラウド保存では書き込みが確定した瞬間にも
+          // 同じ内容で再通知が来るため、ポインタが動いていなければ作り直さない
+          if (competitionId !== this.currentCompetitionId || !this.readyFlags.appState) {
+            this.currentCompetitionId = competitionId;
+            this.readyFlags.appState = true;
+            this.recomputeDerived();
+          }
           this.notify();
         },
         (error) => this.handleError(error, 'subscribeAppState')
@@ -159,6 +164,9 @@ export class StorageManager {
   /** 3つの購読すべてが初回スナップショットを受け取ったか */
   isReady = (): boolean =>
     this.readyFlags.competitions && this.readyFlags.masters && this.readyFlags.appState;
+
+  /** 現在の保存先の種別。UIの出し分けに使う */
+  getKind = (): StorageKind | null => this.backend?.kind ?? null;
 
   /** useSyncExternalStore用。データが変わるたびにコールバックが呼ばれる */
   subscribe = (callback: () => void): (() => void) => {
@@ -211,21 +219,50 @@ export class StorageManager {
       totalSize: `${sizeKB} KB`,
       itemCount: this.competitionsCache.length,
       lastUpdated: latest ? formatJapaneseDateTime(latest) : '-',
+      kind: this.backend?.kind ?? null,
     };
   }
 
   // === 書き込みの共通処理 ===
 
   /**
+   * 書き込み可能か。バックエンドが無い、または初回スナップショット待ちの間は書かない。
+   *
+   * 「初回スナップショット待ち」を弾くのが重要。保存先の切り替え直後に
+   * 古い画面から保存が飛んでくると、切り替え前のデータを切り替え後の保存先に
+   * 書き込んでしまう。ローカル⇄クラウドをまたぐため、これは単なる上書きではなく
+   * 「別のデータ領域への混入」になる。
+   *
+   * 黙って無視し、例外は投げない。ログアウト直後に CompetitionContext の
+   * useEffect が最後の保存を投げてくるのは正常な経路であり、
+   * そこで throw すると画面が壊れるため。
+   *
+   * 書き込めるときは backend を返す。**複数段階の書き込みは、返された
+   * backend を最後まで使い回すこと。** await を挟むと、その間にログイン・
+   * ログアウトで this.backend が別物に差し替わっている可能性がある。
+   * 圏外では setDoc の Promise が通信復帰まで解決しないため、この隙間は
+   * 一瞬ではなく数分単位になりうる。
+   */
+  private writableBackend(): StorageBackend | null {
+    if (!this.isReady()) return null;
+    return this.backend;
+  }
+
+  /**
    * 書き込みPromiseを監視して未送信件数に反映する。
    * オフライン中はPromiseが解決しないため、その間は件数が減らない(＝同期中表示が続く)。
+   *
+   * 保存先が切り替わった後に前の書き込みが解決することがある。その分を
+   * 新しいセッションの件数から引くと同期中表示が狂うため、セッションを見て弾く。
    */
   private track(promise: Promise<unknown>, operation: string): void {
+    const session = this.sessionId;
     this.pendingWrites += 1;
     this.notify();
     promise
       .catch((error) => this.handleError(error, operation))
       .finally(() => {
+        if (session !== this.sessionId) return;
         this.pendingWrites -= 1;
         this.notify();
       });
@@ -234,10 +271,23 @@ export class StorageManager {
   private handleError(error: unknown, operation: string): void {
     const err = error instanceof Error ? error : new Error(String(error));
     console.error(`[StorageManager] ${operation} failed:`, err);
-    logStorageError(err, operation, 'firestore');
-    this.errorListeners.forEach((listener) =>
-      listener('データの同期に失敗しました。通信状態を確認してください。')
-    );
+    logStorageError(err, operation, this.backend?.kind ?? 'unknown');
+    this.errorListeners.forEach((listener) => listener(this.describeError(err)));
+  }
+
+  /**
+   * エラーを利用者向けの文言にする。
+   * ローカル保存の容量超過だけは対処が「通信を確認する」ではないため区別する。
+   * 無言でデータが消えるのが最悪なので、必ず画面に出す。
+   */
+  private describeError(error: Error): string {
+    if (error.name === 'QuotaExceededError' || error.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
+      return 'この端末の保存容量が上限に達しました。古い大会を削除するか、クラウド保存をご検討ください。';
+    }
+    if (this.backend?.kind === 'local') {
+      return 'データの保存に失敗しました。ブラウザの設定をご確認ください。';
+    }
+    return 'データの同期に失敗しました。通信状態を確認してください。';
   }
 
   /** 未送信の書き込み数 (同期インジケータ用) */
@@ -245,7 +295,7 @@ export class StorageManager {
 
   /**
    * 未同期の書き込みが残っているか。
-   * このセッションで投げた分と、前セッションからIndexedDBに残っている分の両方を見る。
+   * このセッションで投げた分と、前セッションから持ち越された分の両方を見る。
    */
   hasPendingWrites = (): boolean =>
     this.pendingWrites > 0 ||
@@ -272,16 +322,13 @@ export class StorageManager {
     return `${Date.now()}-${sequence}-${Math.random().toString(36).slice(2, 11)}`;
   }
 
-  /** 現在の大会を指すポインタを更新する */
-  private async setCurrentPointer(competitionId: string | null): Promise<void> {
-    this.currentCompetitionId = competitionId;
-    await setDoc(doc(db, APP_STATE, CURRENT_DOC), { competitionId });
-  }
-
   // === 現在の大会管理 ===
 
   /** 進行中の大会を保存する。終了させるときは finishCurrentCompetition を使う */
   saveCurrentCompetition(competition: Competition): void {
+    const backend = this.writableBackend();
+    if (!backend) return;
+
     const json = JSON.stringify(competition);
     if (json === this.lastSavedJson) return;
     this.lastSavedJson = json;
@@ -295,9 +342,9 @@ export class StorageManager {
 
     this.track(
       (async () => {
-        await setDoc(doc(db, COMPETITIONS, id), fields);
+        await backend.setCompetition(id, fields);
         if (needsPointerUpdate) {
-          await this.setCurrentPointer(id);
+          await backend.setAppState(id);
         }
       })(),
       'saveCurrentCompetition'
@@ -312,14 +359,17 @@ export class StorageManager {
    * データ管理画面から deleteCompetition する。
    */
   finishCurrentCompetition(competition: Competition): void {
+    const backend = this.writableBackend();
+    if (!backend) return;
+
     this.lastSavedJson = null;
     this.currentCompetitionId = null;
 
     const { id, ...fields } = competition;
     this.track(
       (async () => {
-        await setDoc(doc(db, COMPETITIONS, id), fields);
-        await this.setCurrentPointer(null);
+        await backend.setCompetition(id, fields);
+        await backend.setAppState(null);
       })(),
       'finishCurrentCompetition'
     );
@@ -328,14 +378,14 @@ export class StorageManager {
   /**
    * 「現在の大会」ポインタだけを外す。大会ドキュメントには触れない。
    * 旧版が残した「終了済みなのに現在の大会のまま」の状態を直すために使う。
-   *
-   * currentCompetitionId は setCurrentPointer が同期的に落とすため、ここでの
-   * 明示的なクリアは不要。await の後で呼ぶ finishCurrentCompetition とは異なる。
    */
   releaseCurrentCompetition(): void {
+    const backend = this.writableBackend();
+    if (!backend) return;
     if (!this.currentCompetitionId) return;
     this.lastSavedJson = null;
-    this.track(this.setCurrentPointer(null), 'releaseCurrentCompetition');
+    this.currentCompetitionId = null;
+    this.track(backend.setAppState(null), 'releaseCurrentCompetition');
   }
 
   /** 現在の大会を読み込み */
@@ -348,13 +398,15 @@ export class StorageManager {
 
   /**
    * 大会を保存する。localStorage版では履歴用の別枠に積んでいたが、
-   * Firestoreでは大会はすべて competitions コレクションの1ドキュメントであり、
+   * 現在は大会をすべて1つのコレクション(ローカル保存では1つのマップ)に入れ、
    * status と「現在の大会ポインタ」で区別する。件数の上限は設けていない
    * (通算的中率の集計に全大会が必要なため)。
    */
   saveCompetitionToHistory(competition: Competition): void {
+    const backend = this.writableBackend();
+    if (!backend) return;
     const { id, ...fields } = competition;
-    this.track(setDoc(doc(db, COMPETITIONS, id), fields), 'saveCompetitionToHistory');
+    this.track(backend.setCompetition(id, fields), 'saveCompetitionToHistory');
   }
 
   /**
@@ -368,17 +420,21 @@ export class StorageManager {
    * 外さないと存在しないドキュメントを指したままになる。
    */
   deleteCompetition(competitionId: string): void {
+    const backend = this.writableBackend();
+    if (!backend) return;
+
     const isCurrent = this.currentCompetitionId === competitionId;
     if (isCurrent) {
       this.lastSavedJson = null;
+      this.currentCompetitionId = null;
     }
 
     this.track(
       (async () => {
         if (isCurrent) {
-          await this.setCurrentPointer(null);
+          await backend.setAppState(null);
         }
-        await deleteDoc(doc(db, COMPETITIONS, competitionId));
+        await backend.deleteCompetition(competitionId);
       })(),
       'deleteCompetition'
     );
@@ -410,8 +466,11 @@ export class StorageManager {
       createdAt: new Date().toISOString(),
     };
 
-    const { id, ...fields } = newMaster;
-    this.track(setDoc(doc(db, PARTICIPANT_MASTERS, id), fields), 'saveParticipantMaster');
+    const backend = this.writableBackend();
+    if (backend) {
+      const { id, ...fields } = newMaster;
+      this.track(backend.setParticipantMaster(id, fields), 'saveParticipantMaster');
+    }
 
     return newMaster;
   }
@@ -426,23 +485,23 @@ export class StorageManager {
    * 使用としてのカウントは incrementMasterUsage が担当する。
    */
   updateParticipantMaster(masterId: string, updates: Partial<ParticipantMaster>): void {
+    const backend = this.writableBackend();
+    if (!backend) return;
     // idはドキュメントIDで表現するのでフィールドとしては書き込まない
-    const fields = { ...updates };
+    const fields: Partial<ParticipantMaster> = { ...updates };
     delete fields.id;
     this.track(
-      setDoc(doc(db, PARTICIPANT_MASTERS, masterId), fields, { merge: true }),
+      backend.mergeParticipantMaster(masterId, fields),
       'updateParticipantMaster'
     );
   }
 
-  /** 使用回数を+1する。incrementを使うので複数端末から同時に呼ばれても取りこぼさない */
+  /** 使用回数を+1する */
   incrementMasterUsage(masterId: string): void {
+    const backend = this.writableBackend();
+    if (!backend) return;
     this.track(
-      setDoc(
-        doc(db, PARTICIPANT_MASTERS, masterId),
-        { usageCount: increment(1), lastUsed: new Date().toISOString() },
-        { merge: true }
-      ),
+      backend.incrementMasterUsage(masterId, new Date().toISOString()),
       'incrementMasterUsage'
     );
   }
@@ -456,7 +515,9 @@ export class StorageManager {
    * 無効化ならIDが残るので、再登録時に元のマスターが有効に戻り成績が繋がる。
    */
   deleteParticipantMaster(masterId: string): void {
-    this.track(deleteDoc(doc(db, PARTICIPANT_MASTERS, masterId)), 'deleteParticipantMaster');
+    const backend = this.writableBackend();
+    if (!backend) return;
+    this.track(backend.deleteParticipantMaster(masterId), 'deleteParticipantMaster');
   }
 
   /**
@@ -473,6 +534,11 @@ export class StorageManager {
   }
 
   importParticipantMasters(importData: unknown): ImportResult {
+    const backend = this.writableBackend();
+    if (!backend) {
+      return { success: false, error: 'データの読み込みが完了していません。少し待ってからお試しください' };
+    }
+
     try {
       const payload = importData as { participantMasters?: unknown };
       if (!Array.isArray(payload?.participantMasters)) {
@@ -504,13 +570,11 @@ export class StorageManager {
         }));
 
       if (newMasters.length > 0) {
-        this.track(
-          this.commitInChunks(newMasters, (batch, master) => {
-            const { id, ...fields } = master;
-            batch.set(doc(db, PARTICIPANT_MASTERS, id), fields);
-          }),
-          'importParticipantMasters'
-        );
+        const docs: StoredDoc<MasterFields>[] = newMasters.map(({ id, ...fields }) => ({
+          id,
+          fields,
+        }));
+        this.track(backend.putParticipantMasters(docs), 'importParticipantMasters');
       }
 
       return { success: true, imported: newMasters.length };
@@ -545,26 +609,16 @@ export class StorageManager {
 
   getStorageInfo = (): StorageInfo => this.storageInfoCache;
 
-  /** writeBatchの上限を超えないよう分割してコミットする */
-  private async commitInChunks<T>(
-    items: T[],
-    apply: (batch: ReturnType<typeof writeBatch>, item: T) => void
-  ): Promise<void> {
-    for (let i = 0; i < items.length; i += BATCH_CHUNK_SIZE) {
-      const batch = writeBatch(db);
-      items.slice(i, i + BATCH_CHUNK_SIZE).forEach((item) => apply(batch, item));
-      await batch.commit();
-    }
-  }
-
   /**
    * 購読を解除し、キャッシュを完全に破棄する。
-   * ログアウト時に必ず呼ぶこと。呼ばないと、共用端末で別のアカウントに
-   * 切り替えたときに前の人の大会データがそのまま見えてしまう。
+   * 保存先を切り替えるとき(ログイン・ログアウト)に必ず呼ぶこと。呼ばないと、
+   * 共用端末で別のアカウントに切り替えたときに前の人の大会データが見えてしまう。
    */
   dispose(): void {
     this.unsubscribers.forEach((unsubscribe) => unsubscribe());
     this.unsubscribers = [];
+    this.backend?.dispose();
+    this.backend = null;
     this.initialized = false;
     this.readyFlags = { competitions: false, masters: false, appState: false };
     this.pendingFromMetadata = { competitions: false, masters: false, appState: false };
@@ -576,6 +630,8 @@ export class StorageManager {
     this.currentCompetitionId = null;
     this.lastSavedJson = null;
     this.pendingWrites = 0;
+    // 進行中の書き込みが後から解決しても、次のセッションの件数を減らさないようにする
+    this.sessionId += 1;
     // 購読中のコンポーネントを空の状態で描き直させる
     this.notify();
   }

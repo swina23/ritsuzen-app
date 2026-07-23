@@ -13,6 +13,25 @@ export interface ExcelExportData {
 }
 
 /**
+ * 出力ファイル名を作る。
+ *
+ * 以前は自団体名（立禅の会）を決め打ちしていたが、ログイン不要で誰でも使える
+ * ようになったため、大会名から作る。他団体が出力したファイルに無関係の
+ * 団体名が付くのを避けるため。
+ *
+ * ファイル名に使えない文字（Windows / macOS の両方を考慮）と制御文字は
+ * 落とす。大会名が空だったり記号だけだった場合に無名のファイルにならないよう、
+ * 既定の名前を用意しておく。
+ */
+const buildExportFileName = (competition: Competition, extension: string): string => {
+  const date = competition.date.replace(/-/g, '');
+  // eslint-disable-next-line no-control-regex
+  const sanitized = competition.name.replace(/[\\/:*?"<>|\x00-\x1f]/g, '').trim();
+  const base = sanitized.length > 0 ? sanitized : '射会記録';
+  return `${base}${date}.${extension}`;
+};
+
+/**
  * ワークブックに「通算成績」シートを追加する。
  * 当該大会の結果だけでなく、その時点での通算成績も一緒に配れるようにするため。
  */
@@ -491,7 +510,7 @@ export const exportToExcelWithBorders = async (data: ExcelExportData): Promise<v
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = `立禅の会${competition.date.replace(/-/g, '')}.xlsx`;
+  link.download = buildExportFileName(competition, 'xlsx');
   link.click();
   URL.revokeObjectURL(url);
 };
@@ -604,7 +623,7 @@ export const exportToCSV = (data: ExcelExportData): void => {
   const url = URL.createObjectURL(blob);
   
   link.setAttribute('href', url);
-  link.setAttribute('download', `立禅の会${competition.date.replace(/-/g, '')}.csv`);
+  link.setAttribute('download', buildExportFileName(competition, 'csv'));
   link.style.visibility = 'hidden';
   
   document.body.appendChild(link);

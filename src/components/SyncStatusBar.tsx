@@ -10,11 +10,15 @@
  * 書き込みが走るので、素直に「同期中」を出すと入力のたびに画面が跳ねる。
  * 通信が正常なら数百ミリ秒で終わって知らせる意味もないため、
  * 一定時間終わらなかったときだけ表示する。
+ *
+ * この端末に保存するモード(未ログイン)では通信も同期も無いので、
+ * オフライン表示と同期中表示は出さない。保存の失敗だけは知らせる必要があるため、
+ * エラー表示は保存先によらず出す。
  */
 
 import React, { useEffect, useState } from 'react';
 import { storageManager } from '../utils/StorageManager';
-import { useHasPendingWrites } from '../hooks/useStorage';
+import { useHasPendingWrites, useStorageKind } from '../hooks/useStorage';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 
 /** これ以上同期が終わらなければ「同期中」を出す (ミリ秒) */
@@ -23,10 +27,17 @@ const SYNCING_INDICATOR_DELAY_MS = 1500;
 const SyncStatusBar: React.FC = () => {
   const isOnline = useOnlineStatus();
   const hasPendingWrites = useHasPendingWrites();
+  const storageKind = useStorageKind();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showSyncing, setShowSyncing] = useState(false);
 
   useEffect(() => storageManager.onError(setErrorMessage), []);
+
+  // 保存先が変わったら前の保存先のエラーは無関係になる。
+  // このバーは保存先が変わってもアンマウントされないので、ここで自分で消す
+  useEffect(() => {
+    setErrorMessage(null);
+  }, [storageKind]);
 
   useEffect(() => {
     if (!hasPendingWrites) {
@@ -46,6 +57,11 @@ const SyncStatusBar: React.FC = () => {
         </button>
       </div>
     );
+  }
+
+  // 端末保存モードでは通信状態も同期も関係ない
+  if (storageKind !== 'cloud') {
+    return null;
   }
 
   if (!isOnline) {

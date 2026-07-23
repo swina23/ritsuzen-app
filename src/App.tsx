@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { CompetitionProvider, useCompetition } from './contexts/CompetitionContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LoginScreen from './components/LoginScreen';
@@ -13,6 +13,7 @@ import CompetitionErrorBoundary from './components/error-boundaries/CompetitionE
 import DataErrorBoundary from './components/error-boundaries/DataErrorBoundary';
 import ConfirmModal from './components/ConfirmModal';
 import SyncStatusBar from './components/SyncStatusBar';
+import { useStorageKind } from './hooks/useStorage';
 import { createErrorReport, saveErrorReport } from './utils/errorUtils';
 import './App.css';
 
@@ -43,27 +44,18 @@ type ModalConfig = {
   onConfirm: () => void;
 };
 
-/**
- * ログイン済み・許可済みのときだけ中身を表示する。
- * 実際のアクセス制御は Firestore Security Rules 側で行われる。
- */
-const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { status } = useAuth();
-
-  if (status === 'loading') {
-    return <div className="auth-loading">読み込み中…</div>;
-  }
-  if (status !== 'signedIn') {
-    return <LoginScreen />;
-  }
-  return <>{children}</>;
-};
-
 const AppContent: React.FC = () => {
   const { state, finishCompetition } = useCompetition();
-  const { user, logOut } = useAuth();
+  const { status, user, logOut } = useAuth();
+  const storageKind = useStorageKind();
   const [currentView, setCurrentView] = useState<AppView>('setup');
   const [modalConfig, setModalConfig] = useState<ModalConfig | null>(null);
+  const [showLogin, setShowLogin] = useState(false);
+
+  // ログインが成立したらログイン画面を閉じる
+  useEffect(() => {
+    if (status === 'signedIn') setShowLogin(false);
+  }, [status]);
 
   const showConfirm = (config: ModalConfig) => setModalConfig(config);
   const closeModal = () => setModalConfig(null);
@@ -169,8 +161,21 @@ const AppContent: React.FC = () => {
         </h1>
         <span className="app-version">v{VERSION}</span>
         <div className="app-account">
-          <span className="app-account-email">{user?.email}</span>
-          <button className="logout-btn" onClick={logOut}>ログアウト</button>
+          {storageKind && (
+            <span className={`storage-mode storage-mode--${storageKind}`}>
+              {storageKind === 'cloud' ? '☁️ クラウド保存' : '📱 この端末に保存'}
+            </span>
+          )}
+          {status === 'signedIn' ? (
+            <>
+              <span className="app-account-email">{user?.email}</span>
+              <button className="logout-btn" onClick={logOut}>ログアウト</button>
+            </>
+          ) : (
+            <button className="logout-btn" onClick={() => setShowLogin(true)}>
+              {status === 'unauthorized' ? '⚠️ 未登録のアカウント' : 'クラウド保存を使う'}
+            </button>
+          )}
         </div>
         {state.competition && (
           <div className="competition-status">
@@ -246,6 +251,8 @@ const AppContent: React.FC = () => {
         </div>
       )}
 
+      {showLogin && <LoginScreen onClose={() => setShowLogin(false)} />}
+
       {modalConfig && (
         <ConfirmModal
           isOpen={true}
@@ -280,12 +287,16 @@ function App() {
         saveErrorReport(errorReport);
       }}
     >
+      {/*
+        ログインは必須ではない。未ログインならこの端末に保存する無料モードで
+        全機能が使え、ログインするとクラウド保存に切り替わる。
+        保存先の選択は CompetitionProvider が認証状態から決めるため、
+        AuthProvider の内側に置く必要がある。
+      */}
       <AuthProvider>
-        <AuthGate>
-          <CompetitionProvider>
-            <AppContent />
-          </CompetitionProvider>
-        </AuthGate>
+        <CompetitionProvider>
+          <AppContent />
+        </CompetitionProvider>
       </AuthProvider>
     </ErrorBoundary>
   );

@@ -2,6 +2,9 @@ import React, { createContext, useContext, useReducer, ReactNode, useEffect } fr
 import { Competition, CompetitionState, Participant } from '../types';
 import { initializeParticipantRecord, updateParticipantRecord, calculateRankings } from '../utils/calculations';
 import { storageManager } from '../utils/StorageManager';
+import { useAuth } from './AuthContext';
+import { LocalStorageBackend } from '../lib/storage/LocalStorageBackend';
+import type { StorageBackend } from '../lib/storage/StorageBackend';
 import { generateCompetitionId, generateParticipantId } from '../utils/idGeneration';
 import { DEFAULT_ROUNDS_COUNT } from '../utils/constants';
 import { normalizeCompetition } from '../utils/competitionMigration';
@@ -35,6 +38,7 @@ type CompetitionAction =
   | { type: 'CLEAR_GROUPING' }
   | { type: 'UPDATE_SHOT'; payload: { participantId: string; roundNumber: number; shotIndex: number; hit: boolean | null } }
   | { type: 'CLEAR_CURRENT_COMPETITION' }
+  | { type: 'RESET_FOR_BACKEND_SWITCH' }
   | { type: 'LOAD_COMPETITION'; payload: Competition | null };
 
 const initialState: CompetitionState = {
@@ -249,6 +253,19 @@ const competitionReducer = (state: CompetitionState, action: CompetitionAction):
       return { ...initialState, loading: false };
     }
 
+    case 'RESET_FOR_BACKEND_SWITCH': {
+      /**
+       * 保存先の切り替え(ログイン・ログアウト)に伴う初期化。
+       *
+       * competition を落として loading に戻すのが肝。ここを残すと、
+       * 切り替え後の画面に古い保存先のデータが残ったままになり、
+       * 次の入力で**別の保存先へ書き込まれる**（ローカル⇄クラウドをまたぐため、
+       * 単なる上書きではなく別のデータ領域への混入になる）。
+       * loading:true の間は保存用effectが止まり、画面も読み込み中表示になる。
+       */
+      return initialState;
+    }
+
     case 'LOAD_COMPETITION': {
       if (!action.payload) {
         return {
@@ -274,11 +291,28 @@ const competitionReducer = (state: CompetitionState, action: CompetitionAction):
 
 export const CompetitionProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(competitionReducer, initialState);
+  const { status } = useAuth();
 
-  // アプリ起動時にFirestoreの購読を開始し、初回スナップショットが揃ってから読み込む。
-  // このProviderは認証後(AuthGateの内側)にしかマウントされない。
+  /**
+   * 認証状態から保存先を決めて購読を開始し、初回スナップショットが揃ってから読み込む。
+   *
+   *   signedOut / unauthorized → ローカル保存（無料モード）
+   *   signedIn                 → クラウド保存
+   *
+   * 保存先の生成・注入・切り替えはこのProviderが一手に引き受ける
+   * （AuthContextは認証状態だけを持ち、storageManagerには触らない）。
+   */
   useEffect(() => {
-    storageManager.initialize();
+    // 認証状態が確定するまでは保存先を決められない。loading表示のまま待つ
+    if (status === 'loading') return;
+
+    // 保存先の切り替えは React state のリセットと**不可分**。
+    // これを先に同期的に行わないと、切り替え前の大会が切り替え後の保存先へ
+    // 書き込まれる経路が開く（RESET_FOR_BACKEND_SWITCH のコメント参照）。
+    dispatch({ type: 'RESET_FOR_BACKEND_SWITCH' });
+
+    let cancelled = false;
+    let unsubscribe: (() => void) | undefined;
 
     /**
      * 旧版は大会を終了しても「現在の大会」ポインタが残り、リセットするまで
@@ -295,20 +329,49 @@ export const CompetitionProvider: React.FC<{ children: ReactNode }> = ({ childre
       dispatch({ type: 'LOAD_COMPETITION', payload: current });
     };
 
-    // 既に準備できていれば購読せず即座に読み込む
-    if (storageManager.isReady()) {
-      loadCurrent();
-      return;
+    const begin = (backend: StorageBackend) => {
+      // 動的importの解決を待つ間に認証状態が変わっていたら、使わずに捨てる
+      if (cancelled) {
+        backend.dispose();
+        return;
+      }
+      storageManager.initialize(backend);
+
+      // ローカル保存は初回スナップショットを同期的に流すため、ここで既に真になる
+      if (storageManager.isReady()) {
+        loadCurrent();
+        return;
+      }
+
+      unsubscribe = storageManager.subscribe(() => {
+        if (!storageManager.isReady()) return;
+        unsubscribe?.();
+        unsubscribe = undefined;
+        loadCurrent();
+      });
+    };
+
+    if (status === 'signedIn') {
+      // Firebaseは初期バンドルとしては重く、無料モードでは一切使わない。
+      // また src/lib/firebase.ts は環境変数が無いと読み込み時にthrowするため、
+      // 静的importのままだとFirebase未設定の環境でアプリが起動しなくなる。
+      import('../lib/storage/FirestoreBackend')
+        .then(({ FirestoreBackend }) => begin(new FirestoreBackend()))
+        .catch((error) => {
+          console.error('[CompetitionContext] クラウド保存の初期化に失敗しました:', error);
+          // 保存先が無いままでは何も表示できないので、ローカルに退避する
+          if (!cancelled) begin(new LocalStorageBackend());
+        });
+    } else {
+      begin(new LocalStorageBackend());
     }
 
-    const unsubscribe = storageManager.subscribe(() => {
-      if (!storageManager.isReady()) return;
-      unsubscribe();
-      loadCurrent();
-    });
-
-    return unsubscribe;
-  }, []);
+    return () => {
+      cancelled = true;
+      unsubscribe?.();
+      storageManager.dispose();
+    };
+  }, [status]);
 
   // 大会データが変更されるたびにFirestoreへ保存。
   // 読み込み完了前に走らせると、まだ空のstateで既存データを上書きしてしまう。

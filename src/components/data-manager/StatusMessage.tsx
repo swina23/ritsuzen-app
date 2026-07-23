@@ -12,7 +12,7 @@ const StatusMessage: React.FC<StatusMessageProps> = React.memo(({ message }) => 
   if (!message) return null;
 
   return (
-    <div className="import-status">
+    <div className="status-message">
       <p>{message}</p>
     </div>
   );

@@ -3,7 +3,6 @@ import type { User } from 'firebase/auth';
 import { onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth';
 import { auth, googleProvider } from '../lib/firebase';
 import { isAuthorizedEmail } from '../config/authorizedUsers';
-import { storageManager } from '../utils/StorageManager';
 
 export type AuthStatus =
   | 'loading'       // 認証状態の復元中
@@ -28,27 +27,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     // リロード後もログイン状態が復元される。完了するまでは 'loading'
+    //
+    // ここでは認証状態を持つだけで、保存先(storageManager)には触らない。
+    // 共用端末で前の人のデータが残らないようにする破棄は、状態の変化を受けて
+    // CompetitionContext が dispose() → initialize() として行う。
+    // 保存先の切り替えは React state のリセットと不可分なため、両方を
+    // 見られる場所に一本化している。
+    //
+    // Firebase 未設定の環境ではログインそのものが使えないが、
+    // 端末保存で全機能が使えるので未ログイン扱いで進める。
+    if (!auth) {
+      setStatus('signedOut');
+      return;
+    }
     return onAuthStateChanged(auth, (nextUser) => {
       if (!nextUser) {
-        // 共用端末での使用を前提としているため、ログアウト時には
-        // Firestoreの購読とキャッシュを必ず破棄する。残したままだと
-        // 次にログインした人に前の人の大会データが見えてしまう。
-        storageManager.dispose();
         setUser(null);
         setStatus('signedOut');
         return;
       }
-      const authorized = isAuthorizedEmail(nextUser.email);
-      if (!authorized) {
-        storageManager.dispose();
-      }
       setUser(nextUser);
-      setStatus(authorized ? 'signedIn' : 'unauthorized');
+      setStatus(isAuthorizedEmail(nextUser.email) ? 'signedIn' : 'unauthorized');
     });
   }, []);
 
   const signIn = useCallback(async () => {
     setError(null);
+    if (!auth) {
+      setError('この環境ではクラウド保存を利用できません。記録はこの端末に保存されます。');
+      return;
+    }
     try {
       await signInWithPopup(auth, googleProvider);
       // 成功後の状態遷移は onAuthStateChanged が行う
@@ -67,6 +75,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logOut = useCallback(async () => {
     setError(null);
+    if (!auth) return;
     await signOut(auth);
   }, []);
 

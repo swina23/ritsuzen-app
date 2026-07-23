@@ -11,6 +11,17 @@ import { useSyncExternalStore } from 'react';
 import { storageManager } from '../utils/StorageManager';
 import { Competition, ParticipantMaster } from '../types';
 import type { StorageInfo } from '../utils/StorageManager';
+import type { StorageKind } from '../lib/storage/StorageBackend';
+
+/**
+ * 現在の保存先の種別。無料/有料の出し分けはこれで判断する。
+ *
+ * storageManager.getKind() を直接呼んでも、他のフックの通知に便乗して
+ * たまたま再レンダーされることが多い。しかしそれは暗黙の前提なので、
+ * 種別だけを見るコンポーネントのためにフックとして公開しておく。
+ */
+export const useStorageKind = (): StorageKind | null =>
+  useSyncExternalStore(storageManager.subscribe, storageManager.getKind);
 
 export const useCompetitionHistory = (): Competition[] =>
   useSyncExternalStore(storageManager.subscribe, storageManager.getCompetitionHistory);

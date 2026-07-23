@@ -19,19 +19,28 @@ const firebaseConfig = {
 
 // 環境変数の設定漏れは起動時に気付けるようにする。
 // (未設定のままだと認証が不可解な失敗をするため)
+//
+// ただしここで throw してはいけない。クラウド保存はログインした人だけの機能で、
+// 未ログインならこの端末に保存する形で全機能が使える。読み込み時に throw すると
+// Firebase 未設定の環境でアプリ自体が起動しなくなり、無料で使える前提が崩れる。
 const missingKeys = Object.entries(firebaseConfig)
   .filter(([, value]) => !value)
   .map(([key]) => key);
 
-if (missingKeys.length > 0) {
-  throw new Error(
-    `Firebaseの環境変数が設定されていません: ${missingKeys.join(', ')}\n` +
+/** クラウド保存が使える環境か。false ならログイン機能ごと無効になる */
+export const isFirebaseConfigured = missingKeys.length === 0;
+
+if (!isFirebaseConfigured) {
+  console.warn(
+    `[firebase] 環境変数が設定されていないため、クラウド保存は無効です: ${missingKeys.join(', ')}\n` +
     '.env.local (ローカル) または Vercelの環境変数を確認してください。'
   );
 }
 
-export const firebaseApp = initializeApp(firebaseConfig);
-export const auth = getAuth(firebaseApp);
+export const firebaseApp = isFirebaseConfigured ? initializeApp(firebaseConfig) : null;
+
+/** 未設定の環境では null。利用側で null チェックすること */
+export const auth = firebaseApp ? getAuth(firebaseApp) : null;
 
 export const googleProvider = new GoogleAuthProvider();
 // 共用端末で前回のアカウントに自動ログインせず、毎回選ばせる
@@ -43,7 +52,24 @@ googleProvider.setCustomParameters({ prompt: 'select_account' });
 //  - 同一端末で複数タブを開いても矛盾しない (persistentMultipleTabManager)
 // ignoreUndefinedProperties は Participant.group のような任意フィールドが
 // undefined のまま渡ってきても書き込みが落ちないようにするためのもの。
-export const db = initializeFirestore(firebaseApp, {
-  ignoreUndefinedProperties: true,
-  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
-});
+const db = firebaseApp
+  ? initializeFirestore(firebaseApp, {
+      ignoreUndefinedProperties: true,
+      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+    })
+  : null;
+
+/**
+ * Firestore への参照を得る。未設定の環境では throw する。
+ *
+ * 呼ぶのは FirestoreBackend だけで、それは動的 import された上に
+ * ログイン成立時しか生成されない。つまりここが throw するのは
+ * 環境変数が壊れているときだけで、CompetitionContext が受け止めて
+ * 端末保存にフォールバックする。
+ */
+export const requireDb = () => {
+  if (!db) {
+    throw new Error('Firebaseの環境変数が設定されていないため、クラウド保存は利用できません');
+  }
+  return db;
+};
