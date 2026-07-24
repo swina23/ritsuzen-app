@@ -3,6 +3,7 @@
  */
 
 import { ErrorInfo } from 'react';
+import { getTodayJapaneseDate } from './dateUtils';
 
 export interface ErrorReport {
   id: string;
@@ -224,7 +225,7 @@ export const exportErrorReports = (): void => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `kyudo-error-reports-${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `kyudo-error-reports-${getTodayJapaneseDate()}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

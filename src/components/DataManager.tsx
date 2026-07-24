@@ -5,7 +5,6 @@ import DataExportSection from './data-manager/DataExportSection';
 import DataImportSection from './data-manager/DataImportSection';
 import ParticipantMasterSection from './data-manager/ParticipantMasterSection';
 import CompetitionHistorySection from './data-manager/CompetitionHistorySection';
-import DangerSection from './data-manager/DangerSection';
 
 const DataManager: React.FC = () => {
   const [importStatus, setImportStatus] = useState<string>('');
@@ -41,11 +40,7 @@ const DataManager: React.FC = () => {
         onStatusUpdate={handleStatusUpdate}
       />
       
-      <CompetitionHistorySection 
-        onStatusUpdate={handleStatusUpdate}
-      />
-      
-      <DangerSection 
+      <CompetitionHistorySection
         onStatusUpdate={handleStatusUpdate}
       />
     </div>

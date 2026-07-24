@@ -26,7 +26,7 @@ type ModalConfig = {
 };
 
 const AppContent: React.FC = () => {
-  const { state, finishCompetition, resetCompetition } = useCompetition();
+  const { state, finishCompetition } = useCompetition();
   const [currentView, setCurrentView] = useState<AppView>('setup');
   const [modalConfig, setModalConfig] = useState<ModalConfig | null>(null);
 
@@ -36,23 +36,11 @@ const AppContent: React.FC = () => {
   const handleFinishCompetition = () => {
     showConfirm({
       title: '大会を終了しますか？',
-      message: '・記録の編集ができなくなります\n・参加者の追加・変更ができなくなります\n・大会履歴に保存されます\n\n※終了後は変更できません',
+      message: '・記録が大会履歴に保存されます\n・以降この大会の記録は編集できません\n・大会設定画面に戻り、次の大会を作成できます\n\n※記録は削除されません。消したい場合はデータ管理から削除してください',
       confirmLabel: '終了する',
       onConfirm: () => {
         finishCompetition();
-        closeModal();
-      },
-    });
-  };
-
-  const handleResetCompetition = () => {
-    showConfirm({
-      title: '現在の大会をリセットしますか？',
-      message: '・現在の大会データが削除されます\n・過去の大会履歴は保持されます\n・大会設定画面に戻ります',
-      confirmLabel: 'リセット',
-      danger: true,
-      onConfirm: () => {
-        resetCompetition();
+        setCurrentView('setup');
         closeModal();
       },
     });
@@ -183,22 +171,14 @@ const AppContent: React.FC = () => {
         {renderView()}
       </main>
 
-      {state.competition && currentView !== 'participants' && (
+      {state.competition && state.competition.status !== 'finished' && currentView !== 'participants' && (
         <div className="app-actions">
-          {state.competition.status !== 'finished' && (
-            <button
-              onClick={handleFinishCompetition}
-              className="finish-btn"
-              disabled={!canProceedToScoring}
-            >
-              大会終了
-            </button>
-          )}
           <button
-            onClick={handleResetCompetition}
-            className="reset-btn"
+            onClick={handleFinishCompetition}
+            className="finish-btn"
+            disabled={!canProceedToScoring}
           >
-            リセット
+            大会終了
           </button>
         </div>
       )}

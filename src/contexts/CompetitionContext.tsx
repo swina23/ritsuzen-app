@@ -20,7 +20,6 @@ interface CompetitionContextType {
   clearGrouping: () => void;
   updateShot: (participantId: string, roundNumber: number, shotIndex: number, hit: boolean | null) => void;
   finishCompetition: () => void;
-  resetCompetition: () => void;
 }
 
 type CompetitionAction =
@@ -34,8 +33,7 @@ type CompetitionAction =
   | { type: 'MOVE_PARTICIPANT_TO_GROUP'; payload: { participantId: string; direction: 'up' | 'down' } }
   | { type: 'CLEAR_GROUPING' }
   | { type: 'UPDATE_SHOT'; payload: { participantId: string; roundNumber: number; shotIndex: number; hit: boolean | null } }
-  | { type: 'FINISH_COMPETITION' }
-  | { type: 'RESET_COMPETITION' }
+  | { type: 'CLEAR_CURRENT_COMPETITION' }
   | { type: 'LOAD_COMPETITION'; payload: Competition | null };
 
 const initialState: CompetitionState = {
@@ -243,20 +241,9 @@ const competitionReducer = (state: CompetitionState, action: CompetitionAction):
       };
     }
 
-    case 'FINISH_COMPETITION': {
-      if (!state.competition) return state;
-      
-      return {
-        ...state,
-        competition: {
-          ...state.competition,
-          status: 'finished',
-          updatedAt: new Date().toISOString()
-        }
-      };
-    }
-
-    case 'RESET_COMPETITION': {
+    case 'CLEAR_CURRENT_COMPETITION': {
+      // 大会を終了して「現在の大会」から降ろした後の状態。
+      // 終了状態の履歴保存とポインタ解除はfinishCompetition側で済ませている。
       return initialState;
     }
 
@@ -296,6 +283,13 @@ export const CompetitionProvider: React.FC<{ children: ReactNode }> = ({ childre
   // アプリ起動時にLocalStorageからデータを読み込み
   useEffect(() => {
     const savedCompetition = storageManager.loadCurrentCompetition();
+    // 旧版は大会を終了しても「現在の大会」ポインタが残り、リセットするまで
+    // 次の大会を作れなかった。リセットボタンを撤去した現在は終了済みの大会から
+    // 抜け出せなくなるため、起動時にポインタを外す（履歴には残っている）。
+    if (savedCompetition?.status === 'finished') {
+      storageManager.releaseCurrentCompetition();
+      return;
+    }
     if (savedCompetition) {
       dispatch({ type: 'LOAD_COMPETITION', payload: savedCompetition });
     }
@@ -348,23 +342,27 @@ export const CompetitionProvider: React.FC<{ children: ReactNode }> = ({ childre
     dispatch({ type: 'UPDATE_SHOT', payload: { participantId, roundNumber, shotIndex, hit } });
   };
 
+  /**
+   * 大会を終了して「現在の大会」から降ろす。記録は履歴に残る。
+   *
+   * 終了状態のまま画面に残すと、次の大会を作るために別途「降ろす」操作
+   * （旧リセットボタン）が必要で分かりにくかったため、終了と片付けを
+   * 1つの操作にまとめている。破棄したい場合はデータ管理から削除する。
+   */
   const finishCompetition = () => {
-    if (state.competition) {
-      // 大会終了時に履歴に保存
-      const finishedCompetition = {
-        ...state.competition,
-        status: 'finished' as const,
-        updatedAt: new Date().toISOString()
-      };
-      storageManager.saveCompetitionToHistory(finishedCompetition);
-    }
-    dispatch({ type: 'FINISH_COMPETITION' });
-  };
+    if (!state.competition) return;
 
-  const resetCompetition = () => {
-    // リセット時にLocalStorageもクリア
-    storageManager.saveCurrentCompetition(null);
-    dispatch({ type: 'RESET_COMPETITION' });
+    const finished: Competition = {
+      ...state.competition,
+      status: 'finished',
+      updatedAt: new Date().toISOString()
+    };
+
+    // 履歴保存とポインタ解除をStorageManager側でまとめて行う。
+    // この後のdispatchでcompetitionがnullになり、保存用effectは走るものの
+    // 内側の if (state.competition) ガードで実際の保存はスキップされる。
+    storageManager.finishCurrentCompetition(finished);
+    dispatch({ type: 'CLEAR_CURRENT_COMPETITION' });
   };
 
   return (
@@ -380,8 +378,7 @@ export const CompetitionProvider: React.FC<{ children: ReactNode }> = ({ childre
       moveParticipantToGroup,
       clearGrouping,
       updateShot,
-      finishCompetition,
-      resetCompetition
+      finishCompetition
     }}>
       {children}
     </CompetitionContext.Provider>

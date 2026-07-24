@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { useCompetition } from '../contexts/CompetitionContext';
 import { ROUNDS_OPTIONS } from '../utils/constants';
+import { getTodayJapaneseDate } from '../utils/dateUtils';
 
 const CompetitionSetup: React.FC = () => {
   const { state, createCompetition } = useCompetition();
   const [name, setName] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  // toISOString()はUTCになるため、朝9時前に大会を作ると前日の日付になってしまう
+  const [date, setDate] = useState(getTodayJapaneseDate());
   const [handicapEnabled, setHandicapEnabled] = useState(true);
   const [enableRotation, setEnableRotation] = useState(true);
   const [roundsCount, setRoundsCount] = useState(5);
@@ -27,7 +29,7 @@ const CompetitionSetup: React.FC = () => {
         <div className="active-competition-warning">
           <p>⚠️ 現在大会が進行中です。</p>
           <p>「{state.competition?.name}」</p>
-          <p>新しい大会を作成するには、現在の大会をリセットしてください。</p>
+          <p>新しい大会を作成するには、現在の大会を終了してください。</p>
         </div>
       )}
       
@@ -101,7 +103,7 @@ const CompetitionSetup: React.FC = () => {
           type="submit"
           className="create-btn"
           disabled={hasActiveCompetition}
-          title={hasActiveCompetition ? '現在の大会をリセットしてから新規作成してください' : ''}
+          title={hasActiveCompetition ? '現在の大会を終了してから新規作成してください' : ''}
         >
           大会を作成
         </button>

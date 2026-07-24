@@ -2,19 +2,29 @@
  * 大会履歴セクションコンポーネント
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { storageManager } from '../../utils/StorageManager';
 import { exportToExcelWithBorders, exportToCSV } from '../../utils/excelExport';
+import { useCompetition } from '../../contexts/CompetitionContext';
+import ConfirmModal from '../ConfirmModal';
 import { Competition } from '../../types';
 
 interface CompetitionHistorySectionProps {
   onStatusUpdate: (message: string) => void;
 }
 
-const CompetitionHistorySection: React.FC<CompetitionHistorySectionProps> = ({ 
-  onStatusUpdate 
+/** 初期表示する大会数。古い大会まで一覧に出すと目的の大会を探しにくいので畳んでおく */
+const INITIAL_VISIBLE_COUNT = 10;
+
+const CompetitionHistorySection: React.FC<CompetitionHistorySectionProps> = ({
+  onStatusUpdate
 }) => {
   const competitionHistory = storageManager.getCompetitionHistory();
+  // 削除対象が「現在の大会」だった場合、CompetitionContext側のstateが古いまま残る。
+  // その判定に使う。
+  const { state } = useCompetition();
+  const [deleteTarget, setDeleteTarget] = useState<Competition | null>(null);
+  const [showAll, setShowAll] = useState(false);
 
   const handleExportHistoryExcel = async (competition: Competition) => {
     try {
@@ -44,6 +54,25 @@ const CompetitionHistorySection: React.FC<CompetitionHistorySectionProps> = ({
     }
   };
 
+  const handleDelete = () => {
+    if (!deleteTarget) return;
+    // 削除前に「現在の大会」かどうかを確認しておく。deleteCompetitionでポインタは
+    // 外れるが、CompetitionContextのReact stateは古いまま残るためリロードで作り直す。
+    const wasCurrentCompetition = state.competition?.id === deleteTarget.id;
+    storageManager.deleteCompetition(deleteTarget.id);
+    onStatusUpdate(`✅ ${deleteTarget.name}を削除しました`);
+    setDeleteTarget(null);
+    if (wasCurrentCompetition) {
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    }
+  };
+
+  const visibleHistory = showAll
+    ? competitionHistory
+    : competitionHistory.slice(0, INITIAL_VISIBLE_COUNT);
+
   return (
     <div className="history-section">
       <h3>📚 大会履歴</h3>
@@ -51,7 +80,7 @@ const CompetitionHistorySection: React.FC<CompetitionHistorySectionProps> = ({
         <p>保存された大会がありません</p>
       ) : (
         <div className="history-list">
-          {competitionHistory.slice(0, 10).map((competition) => (
+          {visibleHistory.map((competition) => (
             <div key={competition.id} className="history-item">
               <div className="competition-info">
                 <div className="competition-details">
@@ -65,29 +94,58 @@ const CompetitionHistorySection: React.FC<CompetitionHistorySectionProps> = ({
                   </span>
                 </div>
                 <div className="history-actions">
-                  <button 
+                  <button
                     onClick={() => handleExportHistoryExcel(competition)}
                     className="history-export-btn excel-btn"
                     title="Excel出力"
                   >
                     📊 Excel
                   </button>
-                  <button 
+                  <button
                     onClick={() => handleExportHistoryCSV(competition)}
                     className="history-export-btn csv-btn"
                     title="CSV出力"
                   >
                     📋 CSV
                   </button>
+                  {/* 入力途中のデータを誤って消さないよう、削除できるのは完了した大会だけ */}
+                  {competition.status === 'finished' && (
+                    <button
+                      onClick={() => setDeleteTarget(competition)}
+                      className="history-export-btn delete-btn"
+                      title="この大会を削除"
+                    >
+                      🗑️ 削除
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
           ))}
-          {competitionHistory.length > 10 && (
-            <p className="more-text">他 {competitionHistory.length - 10}件...</p>
+          {competitionHistory.length > INITIAL_VISIBLE_COUNT && (
+            <button
+              type="button"
+              className="history-toggle-btn"
+              aria-expanded={showAll}
+              onClick={() => setShowAll(!showAll)}
+            >
+              {showAll
+                ? '折りたたむ'
+                : `他 ${competitionHistory.length - INITIAL_VISIBLE_COUNT}件を表示`}
+            </button>
           )}
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={deleteTarget !== null}
+        title={`${deleteTarget?.name ?? ''}を削除しますか？`}
+        message={"・この大会の記録が削除されます\n・この操作は取り消せません\n\n※参加者マスターと他の大会は残ります\n※出力済みのファイルは削除されません"}
+        confirmLabel="削除する"
+        danger={true}
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 };

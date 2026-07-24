@@ -110,6 +110,36 @@ export class StorageManager {
     }
   }
 
+  /**
+   * 大会を終了状態で履歴に保存し、「現在の大会」ポインタを外す。
+   *
+   * 終了と片付けを1つの操作にまとめるため、履歴への保存と currentCompetition の
+   * クリアを同時に行う。別々に保存すると、その間に落ちたときに「終了済みなのに
+   * 現在の大会のまま」という中途半端な状態が残りうる。
+   */
+  finishCurrentCompetition(competition: Competition): void {
+    const data = this.getStorageData();
+
+    // 既存の同じIDの大会を差し替え、最新を先頭に積む（saveCompetitionToHistoryと同じ規則）
+    const competitions = data.competitions.filter(c => c.id !== competition.id);
+    competitions.unshift(competition);
+    data.competitions = competitions.slice(0, this.MAX_COMPETITIONS);
+
+    data.currentCompetition = null;
+    this.saveStorageData(data);
+  }
+
+  /**
+   * 「現在の大会」ポインタだけを外す。履歴には触れない。
+   * 旧版が残した「終了済みなのに現在の大会のまま」の状態を起動時に直すために使う。
+   */
+  releaseCurrentCompetition(): void {
+    const data = this.getStorageData();
+    if (!data.currentCompetition) return;
+    data.currentCompetition = null;
+    this.saveStorageData(data);
+  }
+
   // === 大会履歴管理 ===
   
   /**
@@ -141,6 +171,21 @@ export class StorageManager {
       console.error('Failed to load competition history:', error);
       return [];
     }
+  }
+
+  /**
+   * 大会を1件削除する。テスト用に作った大会などを安全に消すために使う。
+   *
+   * 削除対象が「現在の大会」でもあった場合はポインタも外す。外さないと
+   * 存在しない大会を指したまま、ヘッダーや結果画面に残り続けてしまう。
+   */
+  deleteCompetition(competitionId: string): void {
+    const data = this.getStorageData();
+    data.competitions = data.competitions.filter(c => c.id !== competitionId);
+    if (data.currentCompetition?.id === competitionId) {
+      data.currentCompetition = null;
+    }
+    this.saveStorageData(data);
   }
 
   /**
@@ -344,18 +389,6 @@ export class StorageManager {
         itemCount: 0,
         lastUpdated: 'Error'
       };
-    }
-  }
-
-  /**
-   * 全データを削除
-   */
-  clearAllData(): void {
-    try {
-      localStorage.removeItem(this.STORAGE_KEY);
-    } catch (error) {
-      console.error('Failed to clear data:', error);
-      throw new Error('データ削除に失敗しました');
     }
   }
 
