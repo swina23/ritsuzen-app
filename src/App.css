@@ -69,13 +69,28 @@
   color: #666;
 }
 
-/* クラウド同期の状態表示。通常時は描画されない */
+/* クラウド同期の状態表示。通常時は描画されない。
+   画面下に浮かせる (position: fixed) のは、表示・非表示でページの高さを
+   変えないため。通常フローに置くと、的中入力のたびに出入りするバーが
+   下のコンテンツを押し下げ、記録入力中に画面が上下に揺れる。 */
 .sync-status {
+  position: fixed;
+  left: 50%;
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 900; /* モーダル(1000)より下 */
+  /* 画面に重なるため、下にあるボタンのタップを奪わないようにする。
+     操作できる要素を持つエラー表示だけ下で有効に戻す */
+  pointer-events: none;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-wrap: wrap;
   gap: 12px;
-  padding: 8px 16px;
+  max-width: calc(100% - 32px);
+  padding: 10px 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
   font-size: 14px;
   text-align: center;
 }
@@ -91,6 +106,7 @@
 }
 
 .sync-status--error {
+  pointer-events: auto; /* 「閉じる」を押せるようにする */
   background-color: #ffebee;
   color: #c62828;
 }
