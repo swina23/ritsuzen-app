@@ -18,7 +18,7 @@ import { Competition, ParticipantMaster } from '../types';
 export const RANKING_MIN_COMPETITIONS = 3;
 
 export interface CareerStat {
-  /** 名寄せキー。masterIdがあればそれ、無ければ氏名 */
+  /** 名寄せキー。masterIdがあればそれ、無ければ氏名から引いたmasterId、それも無ければ氏名 */
   key: string;
   name: string;
   rank: number;
@@ -36,17 +36,81 @@ export interface CareerStat {
 }
 
 /**
- * 名寄せキー。masterIdがあればそれ、無ければ氏名。
- *
- * masterIdが無いのは「マスターに保存」せず手入力した参加者（ゲスト等）で、
- * そういう人は氏名でしか区別できないためこのフォールバックを残す。
- *
- * 以前は氏名からmasterIdを逆引きして寄せる処理があったが、旧アプリからの
- * 移行データにmasterIdを書き戻した時点で不要になったので削除した。
- * 逆引きは無関係な同姓同名のゲストを同一人物として統合してしまう危険があった。
+ * 氏名の表記ゆれを吸収する。揃えるのは空白の有無と括弧の全角/半角だけ。
+ * 「今村 (梨)」と「今村（梨）」は同じ人だが、「石川(桜)」と「石川」は別人なので、
+ * これ以上は踏み込まない。
  */
-const buildKey = (masterId: string | undefined, name: string): string =>
-  masterId ? `master:${masterId}` : `name:${name}`;
+// \s は全角スペース(U+3000)も含むので、半角・全角どちらの空白も落ちる
+const normalizeName = (name: string): string =>
+  name.replace(/\s/g, '').replace(/（/g, '(').replace(/）/g, ')');
+
+/**
+ * 氏名からmasterIdを引く表。同じ氏名のマスターが複数あるときは載せない
+ * （どちらの人か決められないため、氏名キーのまま集計する）。
+ *
+ * マスターは無効化済みのものも渡ってくる。過去に出場した人を無効化しても
+ * 通算成績には残るため、無効化を理由に除くと逆に名寄せが切れる。
+ *
+ * マスターの氏名だけでなく、masterIdが付いている過去の参加者の氏名も拾う。
+ * マスターの氏名は後から訂正できる（表記ゆれの統一など）ので、訂正前の氏名で
+ * 記録された参加者は現在のマスター名と一致しない。当時の氏名を残している
+ * 参加者側からも引けるようにして、その分を取りこぼさないようにする。
+ */
+const buildMasterIdByName = (
+  masters: ParticipantMaster[],
+  competitions: Competition[]
+): Map<string, string> => {
+  const idsByName = new Map<string, Set<string>>();
+  const register = (name: string, id: string): void => {
+    const key = normalizeName(name);
+    const ids = idsByName.get(key);
+    if (ids) {
+      ids.add(id);
+    } else {
+      idsByName.set(key, new Set([id]));
+    }
+  };
+
+  masters.forEach((master) => register(master.name, master.id));
+  competitions.forEach((competition) => {
+    competition.participants.forEach((participant) => {
+      if (participant.masterId) register(participant.name, participant.masterId);
+    });
+  });
+
+  const resolved = new Map<string, string>();
+  idsByName.forEach((ids, name) => {
+    if (ids.size === 1) resolved.set(name, Array.from(ids)[0]);
+  });
+  return resolved;
+};
+
+/**
+ * 名寄せキー。masterIdがあればそれ、無ければ氏名からマスターを引き、
+ * それも無ければ氏名そのもの。
+ *
+ * masterIdが無いのは「マスターに保存」せず手入力した参加者と、旧アプリから
+ * 移行したときにマスターと紐付かなかった大会の参加者。後者はその人が後から
+ * マスターに登録されると、過去分（氏名キー）と以降の分（masterIdキー）が
+ * 別人として2行に割れてしまう。2026-08-16の稽古で実際にこれが起きた
+ * （田中(紀)・岡田・成田）。
+ *
+ * 氏名からの逆引きは一度削除した処理で、同姓同名の別人を統合してしまう危険が
+ * あるのは変わらない。それでも戻したのは、①アプリは同名のマスターを2件作らせない
+ * ので、氏名が一致する相手は「その人自身」である公算が高い、②同姓同名の別人が
+ * 混ざる害より、同じ人の記録が黙って2行に割れる害の方が現に起きていて大きい、
+ * という判断による。念のため、同名マスターが複数あるときは寄せない。
+ */
+const resolveIdentity = (
+  masterId: string | undefined,
+  name: string,
+  masterIdByName: Map<string, string>
+): { key: string; masterId?: string } => {
+  const resolved = masterId ?? masterIdByName.get(normalizeName(name));
+  return resolved
+    ? { key: `master:${resolved}`, masterId: resolved }
+    : { key: `name:${normalizeName(name)}` };
+};
 
 interface Accumulator {
   key: string;
@@ -80,6 +144,7 @@ export const calculateCareerStats = (
   masters: ParticipantMaster[]
 ): CareerStat[] => {
   const accumulators = new Map<string, Accumulator>();
+  const masterIdByName = buildMasterIdByName(masters, competitions);
 
   competitions.forEach((competition) => {
     const sortKey = buildSortKey(competition);
@@ -103,8 +168,13 @@ export const calculateCareerStats = (
       // 登録だけして一射もしていない人は出場としてカウントしない
       if (shots === 0) return;
 
-      const masterId = participant.masterId;
-      const key = buildKey(masterId, participant.name);
+      // 氏名から引けたmasterIdもここで確定する。マスター側の氏名・段位を最新として
+      // 表示するのは、参加者にmasterIdが焼き付いている場合と同じでよい
+      const { key, masterId } = resolveIdentity(
+        participant.masterId,
+        participant.name,
+        masterIdByName
+      );
       const existing = accumulators.get(key);
 
       if (!existing) {
