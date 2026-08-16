@@ -4,6 +4,7 @@
  */
 
 import { Participant, ParticipantMaster, ParticipantRecord } from '../types';
+import { compareByReading } from './kana';
 
 // === 参加者並び替えユーティリティ ===
 
@@ -75,15 +76,18 @@ export const moveParticipantDown = (participants: Participant[], participantId: 
 // === ソートユーティリティ ===
 
 /**
- * 参加者マスターを登録順でソート
+ * 参加者マスターを五十音順（よみ順）でソート。よみが無い人は末尾に登録順で並ぶ。
  *
- * idは `${Date.now()}-${ランダム}` で採番しているため、辞書順に並べると登録順になる。
- * 以前は使用回数と最終使用日時で並べていたが、大会で使うたびに順番が変わるため
- * 「さっき押した場所にさっきと違う人がいる」状態になり、無効化の押し間違いを招いていた。
- * idは一度振ったら変わらないので、一覧の位置が動かない。
+ * 使用回数と最終使用日時で並べていた時期があるが、大会で使うたびに順番が変わり
+ * 「さっき押した場所にさっきと違う人がいる」状態になって無効化の押し間違いを招いた。
+ * よみは人が変えない限り動かないので、一覧の位置が勝手に変わることはない。
+ *
+ * よみが無い人の中の順序は登録順。idは `${Date.now()}-${ランダム}` で採番しており
+ * 辞書順に並べると登録順になる。JavaScriptのsortは安定なので、先にid順に並べてから
+ * よみで並べ替えると、よみが同じ（または無い）人の間では登録順が保たれる。
  */
-export const sortMastersByRegistration = (masters: ParticipantMaster[]): ParticipantMaster[] => {
-  return [...masters].sort((a, b) => a.id.localeCompare(b.id));
+export const sortMastersByReading = (masters: ParticipantMaster[]): ParticipantMaster[] => {
+  return [...masters].sort((a, b) => a.id.localeCompare(b.id)).sort(compareByReading);
 };
 
 /**

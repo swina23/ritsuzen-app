@@ -7,7 +7,7 @@ import { storageManager } from '../../utils/StorageManager';
 import { normalizeParticipantName, participantNameKey } from '../../utils/participantName';
 import { useAllParticipantMasters } from '../../hooks/useStorage';
 import { formatRank } from '../../utils/formatters';
-import { sortMastersByRegistration } from '../../utils/arrayUtils';
+import { sortMastersByReading } from '../../utils/arrayUtils';
 import { RANK_OPTIONS } from '../../utils/constants';
 
 interface ParticipantMasterSectionProps {
@@ -18,9 +18,51 @@ const ParticipantMasterSection: React.FC<ParticipantMasterSectionProps> = ({
   onStatusUpdate 
 }) => {
   const allMasters = useAllParticipantMasters();
-  const masters = useMemo(() => sortMastersByRegistration(allMasters), [allMasters]);
+  const masters = useMemo(() => sortMastersByReading(allMasters), [allMasters]);
   const [showMasters, setShowMasters] = useState(false);
-  const [editTarget, setEditTarget] = useState<{ id: string; name: string; rank: number } | null>(null);
+  const [editTarget, setEditTarget] = useState<{ id: string; name: string; reading: string; rank: number } | null>(null);
+  // よみ一括入力。開いた時点の対象と下書きをそのまま持ち続ける。
+  // 表示を購読中の一覧から作ると、別端末で誰かのよみが保存された瞬間に
+  // その行が消え、入力途中の文字ごと失われるため。
+  // 保存を押すまで書き込まないのも同じ理由（1件ずつ書くと一覧が並び替わる）
+  const [readingBulk, setReadingBulk] = useState<{
+    targets: { id: string; name: string }[];
+    drafts: Record<string, string>;
+  } | null>(null);
+
+  // よみが未設定の人。一覧を五十音順に並べるにはこの人たちを埋める必要がある
+  const missingReadingMasters = useMemo(
+    () => masters.filter((master) => !master.reading),
+    [masters]
+  );
+
+  const handleStartReadingBulk = () => {
+    setReadingBulk({
+      targets: missingReadingMasters.map((master) => ({ id: master.id, name: master.name })),
+      drafts: {},
+    });
+  };
+
+  const handleSaveReadingBulk = () => {
+    if (!readingBulk) return;
+    // 開いている間に別端末で入ったよみは上書きしない。
+    // 相手の入力を、こちらの古い画面の値で消してしまわないため
+    const alreadySet = new Set(
+      allMasters.filter((master) => master.reading).map((master) => master.id)
+    );
+    const entries = Object.entries(readingBulk.drafts).filter(
+      ([id, reading]) => reading.trim() && !alreadySet.has(id)
+    );
+    entries.forEach(([id, reading]) => {
+      storageManager.updateParticipantMaster(id, { reading });
+    });
+    setReadingBulk(null);
+    onStatusUpdate(
+      entries.length > 0
+        ? `✅ ${entries.length}名のよみを保存しました`
+        : 'よみが入力されていないため、保存しませんでした'
+    );
+  };
 
   // 一覧はFirestoreの購読経由で自動更新されるため、手動での再読み込みは不要。
   // 「無効」バッジがその場で付くので完了メッセージは出さない
@@ -52,7 +94,11 @@ const ParticipantMasterSection: React.FC<ParticipantMasterSectionProps> = ({
     }
 
     // 一覧の表示がその場で変わるので完了メッセージは出さない
-    storageManager.updateParticipantMaster(editTarget.id, { name, rank: editTarget.rank });
+    storageManager.updateParticipantMaster(editTarget.id, {
+      name,
+      reading: editTarget.reading,
+      rank: editTarget.rank,
+    });
     setEditTarget(null);
   };
 
@@ -70,6 +116,52 @@ const ParticipantMasterSection: React.FC<ParticipantMasterSectionProps> = ({
       
       {showMasters && (
         <div className="masters-content">
+          {/* よみは一覧の並び順に使うため、未設定の人はまとめて埋められるようにしている。
+              1人ずつ編集を開くより手数が少ない */}
+          {masters.length > 0 && missingReadingMasters.length > 0 && !readingBulk && (
+            <div className="reading-bulk-notice">
+              <span>よみ未設定が{missingReadingMasters.length}名います（一覧の末尾に並びます）</span>
+              <button onClick={handleStartReadingBulk} className="reading-bulk-btn">
+                よみをまとめて入力
+              </button>
+            </div>
+          )}
+
+          {readingBulk && (
+            <div className="reading-bulk">
+              <p className="reading-bulk-hint">
+                ひらがなで入力してください。空欄のままの人は未設定のまま残ります
+              </p>
+              <div className="reading-bulk-list">
+                {readingBulk.targets.map(target => (
+                  <div key={target.id} className="reading-bulk-row">
+                    <span className="reading-bulk-name">{target.name}</span>
+                    <input
+                      type="text"
+                      value={readingBulk.drafts[target.id] ?? ''}
+                      onChange={(e) =>
+                        setReadingBulk({
+                          ...readingBulk,
+                          drafts: { ...readingBulk.drafts, [target.id]: e.target.value },
+                        })
+                      }
+                      placeholder="よみ"
+                      className="reading-bulk-input"
+                    />
+                  </div>
+                ))}
+              </div>
+              <div className="reading-bulk-actions">
+                <button onClick={handleSaveReadingBulk} className="master-edit-save">
+                  まとめて保存
+                </button>
+                <button onClick={() => setReadingBulk(null)} className="master-edit-cancel">
+                  キャンセル
+                </button>
+              </div>
+            </div>
+          )}
+
           {masters.length === 0 ? (
             <p>登録された参加者マスターがありません</p>
           ) : (
@@ -85,6 +177,13 @@ const ParticipantMasterSection: React.FC<ParticipantMasterSectionProps> = ({
                         className="master-edit-name"
                         placeholder="氏名"
                         autoFocus
+                      />
+                      <input
+                        type="text"
+                        value={editTarget.reading}
+                        onChange={(e) => setEditTarget({ ...editTarget, reading: e.target.value })}
+                        className="master-edit-reading"
+                        placeholder="よみ（ひらがな）"
                       />
                       <select
                         value={editTarget.rank}
@@ -108,13 +207,22 @@ const ParticipantMasterSection: React.FC<ParticipantMasterSectionProps> = ({
                     <div className="master-info">
                       <div className="master-details">
                         <strong>{master.name}</strong>
+                        {/* よみは並び順を決めるので、入っているか一目で分かるようにしておく */}
+                        <span className={`master-reading ${master.reading ? '' : 'unset'}`}>
+                          {master.reading || 'よみ未設定'}
+                        </span>
                         <span className="master-rank">({formatRank(master.rank)})</span>
                       </div>
                       <div className="master-actions">
                         <button
-                          onClick={() => setEditTarget({ id: master.id, name: master.name, rank: master.rank })}
+                          onClick={() => setEditTarget({
+                            id: master.id,
+                            name: master.name,
+                            reading: master.reading ?? '',
+                            rank: master.rank,
+                          })}
                           className="master-edit-btn"
-                          title="氏名・段位を編集"
+                          title="氏名・よみ・段位を編集"
                         >
                           編集
                         </button>

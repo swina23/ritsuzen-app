@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useRef } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -19,15 +19,22 @@ import { formatRank } from '../utils/formatters';
 import { RANK_OPTIONS } from '../utils/constants';
 import { storageManager } from '../utils/StorageManager';
 import { normalizeParticipantName } from '../utils/participantName';
+import { isKanaOnly, kanaRowLabel } from '../utils/kana';
 import { useParticipantMasters } from '../hooks/useStorage';
-import { sortMastersByRegistration, sortParticipantsByOrder, filterByRank } from '../utils/arrayUtils';
+import { sortMastersByReading, sortParticipantsByOrder, filterByRank } from '../utils/arrayUtils';
 import { getGroupInfo, groupParticipants } from '../utils/grouping';
 import SortableParticipantItem from './SortableParticipantItem';
 
 const ParticipantSetup: React.FC = () => {
   const { state, addParticipant, removeParticipant, reorderParticipants, applyAutoGrouping, clearGrouping } = useCompetition();
   const [name, setName] = useState('');
+  const [reading, setReading] = useState('');
   const [rank, setRank] = useState(1);
+  // 変換前のかなを保持する。変換が確定すると入力欄からは消えてしまうため、
+  // compositionupdate の時点で拾っておかないと後から取り出せない
+  const composingKanaRef = useRef('');
+  // よみ欄を人が触ったら自動補完はやめる。手で直したものを上書きしないため
+  const readingEditedRef = useRef(false);
   const [saveToMaster, setSaveToMaster] = useState(false);
   const [selectedMasters, setSelectedMasters] = useState<Set<string>>(new Set());
   const [showMasters, setShowMasters] = useState(true);
@@ -47,7 +54,41 @@ const ParticipantSetup: React.FC = () => {
 
   // マスター一覧はFirestoreの購読から供給されるため、手動での再読み込みは不要
   const activeMasters = useParticipantMasters();
-  const masters = useMemo(() => sortMastersByRegistration(activeMasters), [activeMasters]);
+  const masters = useMemo(() => sortMastersByReading(activeMasters), [activeMasters]);
+
+  // 氏名をIMEで変換する前のかなを、よみ欄に自動で移す。
+  // 「たなか」を「田中」に変換した時点で入力欄からかなは消えてしまうため、
+  // 変換中(compositionupdate)に見えているかなを覚えておき、確定時に足す
+  const handleNameCompositionUpdate = useCallback((e: React.CompositionEvent<HTMLInputElement>) => {
+    if (isKanaOnly(e.data)) {
+      composingKanaRef.current = e.data;
+    }
+  }, []);
+
+  const handleNameCompositionEnd = useCallback(() => {
+    const kana = composingKanaRef.current;
+    composingKanaRef.current = '';
+    // 姓と名を続けて変換したときは足していく（「たなか」＋「たろう」）
+    if (kana && !readingEditedRef.current) {
+      setReading(prev => prev + kana);
+    }
+  }, []);
+
+  const handleNameChange = useCallback((value: string) => {
+    setName(value);
+    // 氏名を消したらよみも白紙に戻す。入れ直したときに前の人のよみが残っていると、
+    // 気付かないまま別人のよみで登録されてしまうため
+    if (!value) {
+      setReading('');
+      readingEditedRef.current = false;
+      composingKanaRef.current = '';
+    }
+  }, []);
+
+  const handleReadingChange = useCallback((value: string) => {
+    setReading(value);
+    readingEditedRef.current = true;
+  }, []);
 
   const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
@@ -73,6 +114,9 @@ const ParticipantSetup: React.FC = () => {
         if (existingMaster) {
           masterId = existingMaster.id;
           participantName = existingMaster.name;
+          // 既存マスターのよみはここでは埋めない。よみを書き込むと一覧が並び替わり、
+          // 参加者を選んでいる最中に行が動いて押し間違いを招くため。
+          // 未設定のよみはデータ管理画面の「よみをまとめて入力」で埋める
           // 無効化済みの人を手入力で登録し直したときは、マスターも有効に戻す。
           // 戻さないと「マスターに保存」したのに一覧に出てこない状態になる。
           if (!existingMaster.isActive) {
@@ -85,6 +129,7 @@ const ParticipantSetup: React.FC = () => {
             // IDはクライアント側で採番されるため戻り値は同期的に得られる
             masterId = storageManager.saveParticipantMaster({
               name: entryName,
+              reading,
               rank,
               isActive: true,
               lastUsed: new Date().toISOString(),
@@ -99,10 +144,13 @@ const ParticipantSetup: React.FC = () => {
       addParticipant({ name: participantName, rank, masterId });
 
       setName('');
+      setReading('');
+      readingEditedRef.current = false;
+      composingKanaRef.current = '';
       setRank(1);
       setSaveToMaster(false);
     }
-  }, [addParticipant, saveToMaster, name, rank, state.competition?.status]);
+  }, [addParticipant, saveToMaster, name, reading, rank, state.competition?.status]);
 
   const handleMasterSelection = useCallback((masterId: string) => {
     const newSelected = new Set(selectedMasters);
@@ -134,6 +182,22 @@ const ParticipantSetup: React.FC = () => {
   const filteredMasters = useMemo(() => {
     return filterByRank(masters, filterRank);
   }, [masters, filterRank]);
+
+  // 「あ行」「か行」…の見出しで区切る。目当ての人を目で探すときの手がかりになる。
+  // 一覧は既によみ順に並んでいるので、隣が同じ行かどうかを見るだけで区切れる
+  const masterRows = useMemo(() => {
+    const rows: { label: string; masters: typeof filteredMasters }[] = [];
+    filteredMasters.forEach((master) => {
+      const label = kanaRowLabel(master.reading);
+      const lastRow = rows[rows.length - 1];
+      if (lastRow && lastRow.label === label) {
+        lastRow.masters.push(master);
+      } else {
+        rows.push({ label, masters: [master] });
+      }
+    });
+    return rows;
+  }, [filteredMasters]);
 
   const isFinished = useMemo(() => state.competition?.status === 'finished', [state.competition?.status]);
 
@@ -233,21 +297,26 @@ const ParticipantSetup: React.FC = () => {
               </div>
 
               <div className="master-list">
-                {filteredMasters.map(master => (
-                  <div key={master.id} className="master-item">
-                    <label className="master-checkbox">
-                      <input
-                        type="checkbox"
-                        checked={selectedMasters.has(master.id)}
-                        onChange={() => handleMasterSelection(master.id)}
-                        disabled={isFinished}
-                      />
-                      <span className="master-info">
-                        <span className="master-name">{master.name}</span>
-                        <span className="master-rank">({formatRank(master.rank)})</span>
-                      </span>
-                    </label>
-                  </div>
+                {masterRows.map(row => (
+                  <React.Fragment key={row.label}>
+                    <div className="master-row-header">{row.label}</div>
+                    {row.masters.map(master => (
+                      <div key={master.id} className="master-item">
+                        <label className="master-checkbox">
+                          <input
+                            type="checkbox"
+                            checked={selectedMasters.has(master.id)}
+                            onChange={() => handleMasterSelection(master.id)}
+                            disabled={isFinished}
+                          />
+                          <span className="master-info">
+                            <span className="master-name">{master.name}</span>
+                            <span className="master-rank">({formatRank(master.rank)})</span>
+                          </span>
+                        </label>
+                      </div>
+                    ))}
+                  </React.Fragment>
                 ))}
               </div>
             </div>
@@ -265,11 +334,31 @@ const ParticipantSetup: React.FC = () => {
               id="participant-name"
               type="text"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => handleNameChange(e.target.value)}
+              onCompositionUpdate={handleNameCompositionUpdate}
+              onCompositionEnd={handleNameCompositionEnd}
               placeholder="参加者名を入力"
               required
               disabled={isFinished}
             />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="participant-reading">よみ:</label>
+            <input
+              id="participant-reading"
+              type="text"
+              value={reading}
+              onChange={(e) => handleReadingChange(e.target.value)}
+              placeholder="ひらがな"
+              disabled={isFinished}
+            />
+            {/* 変換前のかなを拾えるかは端末のIME次第（スマホのキーボードでは
+                かなの段階が取れないことがある）。自動で入る前提の書き方にしない */}
+            <p className="form-hint">
+              マスター一覧をあいうえお順に並べるために使います。
+              氏名を変換したときに自動で入ります（入らなければ手入力してください）
+            </p>
           </div>
 
           <div className="form-group">

@@ -48,6 +48,11 @@ export interface Competition {
 export interface ParticipantMaster {
   id: string;
   name: string;
+  /**
+   * 五十音順に並べるための読み仮名（ひらがな）。
+   * 既存データには無いため任意。未設定の人は一覧の末尾にまとまる
+   */
+  reading?: string;
   rank: number;
   isActive: boolean;
   lastUsed: string;

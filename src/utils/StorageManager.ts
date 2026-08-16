@@ -22,6 +22,7 @@ import { logStorageError } from './errorUtils';
 import { normalizeCompetition } from './competitionMigration';
 import { formatJapaneseDateTime, getTodayJapaneseDate } from './dateUtils';
 import { normalizeParticipantName, participantNameKey } from './participantName';
+import { normalizeReading } from './kana';
 import type {
   MasterFields,
   StorageBackend,
@@ -456,21 +457,32 @@ export class StorageManager {
 
   getAllParticipantMasters = (): ParticipantMaster[] => this.mastersCache;
 
+  /** よみを保存できる形（ひらがな）に揃える。未設定ならキーごと外して返す */
+  private withNormalizedReading<T extends { reading?: string }>(master: T): T {
+    const reading = normalizeReading(master.reading ?? '');
+    if (reading) return { ...master, reading };
+    // Firestoreはundefinedを書き込めないため、未設定のときはキーごと外す。
+    // よみが無い人は一覧の末尾にまとまる
+    const withoutReading = { ...master };
+    delete withoutReading.reading;
+    return withoutReading;
+  }
+
   /**
    * 参加者マスターを保存。IDはクライアント側で採番するため、
    * 書き込みの完了を待たずに新しいマスターを同期的に返せる。
    *
    * 氏名はここで正規化する。呼び出し側の正規化に任せると、
    * 新しい画面から呼んだときに未正規化の氏名が入り込み、
-   * 見た目が同じマスターが2件並ぶ余地が残るため。
+   * 見た目が同じマスターが2件並ぶ余地が残るため。よみも同じ理由でここで揃える。
    */
   saveParticipantMaster(master: Omit<ParticipantMaster, 'id' | 'createdAt'>): ParticipantMaster {
-    const newMaster: ParticipantMaster = {
+    const newMaster = this.withNormalizedReading<ParticipantMaster>({
       ...master,
       name: normalizeParticipantName(master.name),
       id: this.generateId(),
       createdAt: new Date().toISOString(),
-    };
+    });
 
     const backend = this.writableBackend();
     if (backend) {
@@ -496,6 +508,16 @@ export class StorageManager {
     // idはドキュメントIDで表現するのでフィールドとしては書き込まない
     const fields: Partial<ParticipantMaster> = { ...updates };
     delete fields.id;
+    // よみはカタカナ・空白の揺れを吸収してから保存する。
+    // 消したいときは空文字を渡す（未設定として扱われ、一覧の末尾に回る）
+    if (fields.reading !== undefined) {
+      fields.reading = normalizeReading(fields.reading);
+    }
+    // Firestoreはundefinedを書き込めない。「この項目は変えない」つもりで
+    // undefinedを渡されてもエラーにならないよう、キーごと落とす
+    (Object.keys(fields) as (keyof ParticipantMaster)[]).forEach((key) => {
+      if (fields[key] === undefined) delete fields[key];
+    });
     this.track(
       backend.mergeParticipantMaster(masterId, fields),
       'updateParticipantMaster'
@@ -568,15 +590,17 @@ export class StorageManager {
           existingNames.add(key);
           return true;
         })
-        .map((master: ParticipantMaster) => ({
-          ...master,
-          name: normalizeParticipantName(master.name),
-          id: this.generateId(),
-          createdAt: now,
-          isActive: master.isActive !== undefined ? master.isActive : true,
-          usageCount: master.usageCount || 0,
-          lastUsed: master.lastUsed || now,
-        }));
+        .map((master: ParticipantMaster) =>
+          this.withNormalizedReading<ParticipantMaster>({
+            ...master,
+            name: normalizeParticipantName(master.name),
+            id: this.generateId(),
+            createdAt: now,
+            isActive: master.isActive !== undefined ? master.isActive : true,
+            usageCount: master.usageCount || 0,
+            lastUsed: master.lastUsed || now,
+          })
+        );
 
       if (newMasters.length > 0) {
         const docs: StoredDoc<MasterFields>[] = newMasters.map(({ id, ...fields }) => ({
