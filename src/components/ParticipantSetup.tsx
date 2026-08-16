@@ -18,6 +18,7 @@ import { useCompetition } from '../contexts/CompetitionContext';
 import { formatRank } from '../utils/formatters';
 import { RANK_OPTIONS } from '../utils/constants';
 import { storageManager } from '../utils/StorageManager';
+import { normalizeParticipantName } from '../utils/participantName';
 import { useParticipantMasters } from '../hooks/useStorage';
 import { sortMastersByRegistration, sortParticipantsByOrder, filterByRank } from '../utils/arrayUtils';
 import { getGroupInfo, groupParticipants } from '../utils/grouping';
@@ -53,16 +54,25 @@ const ParticipantSetup: React.FC = () => {
     if (state.competition?.status === 'finished') {
       return;
     }
-    if (name.trim()) {
+    // 全角括弧は半角に揃えてから登録する。「今村（梨）」と「今村(梨)」が
+    // 別マスターとして2件できると、その人の通算成績が2行に割れるため
+    const entryName = normalizeParticipantName(name);
+
+    if (entryName) {
       // マスターへの保存を先に済ませ、得られたIDを参加者に紐付ける。
       // これがないと通算成績の名寄せが氏名の文字列一致頼みになり、
       // 改名や同姓同名で破綻する。
       let masterId: string | undefined;
+      // 既存のマスターに当たったときは、そのマスターの氏名で登録する。
+      // 空白や括弧の違いを無視して引き当てるため、入力した表記のまま登録すると
+      // 同じ人なのに大会ごとに表記が違う状態になるため
+      let participantName = entryName;
 
       if (saveToMaster) {
-        const existingMaster = storageManager.findMasterByName(name.trim());
+        const existingMaster = storageManager.findMasterByName(entryName);
         if (existingMaster) {
           masterId = existingMaster.id;
+          participantName = existingMaster.name;
           // 無効化済みの人を手入力で登録し直したときは、マスターも有効に戻す。
           // 戻さないと「マスターに保存」したのに一覧に出てこない状態になる。
           if (!existingMaster.isActive) {
@@ -74,7 +84,7 @@ const ParticipantSetup: React.FC = () => {
           try {
             // IDはクライアント側で採番されるため戻り値は同期的に得られる
             masterId = storageManager.saveParticipantMaster({
-              name: name.trim(),
+              name: entryName,
               rank,
               isActive: true,
               lastUsed: new Date().toISOString(),
@@ -86,7 +96,7 @@ const ParticipantSetup: React.FC = () => {
         }
       }
 
-      addParticipant({ name: name.trim(), rank, masterId });
+      addParticipant({ name: participantName, rank, masterId });
 
       setName('');
       setRank(1);

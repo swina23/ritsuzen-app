@@ -13,6 +13,7 @@
  */
 
 import { Competition, ParticipantMaster } from '../types';
+import { participantNameKey } from './participantName';
 
 /** 順位を付ける最低出場数。これ未満は order=0（順位外）になる */
 export const RANKING_MIN_COMPETITIONS = 3;
@@ -36,15 +37,6 @@ export interface CareerStat {
 }
 
 /**
- * 氏名の表記ゆれを吸収する。揃えるのは空白の有無と括弧の全角/半角だけ。
- * 「今村 (梨)」と「今村（梨）」は同じ人だが、「石川(桜)」と「石川」は別人なので、
- * これ以上は踏み込まない。
- */
-// \s は全角スペース(U+3000)も含むので、半角・全角どちらの空白も落ちる
-const normalizeName = (name: string): string =>
-  name.replace(/\s/g, '').replace(/（/g, '(').replace(/）/g, ')');
-
-/**
  * 氏名からmasterIdを引く表。同じ氏名のマスターが複数あるときは載せない
  * （どちらの人か決められないため、氏名キーのまま集計する）。
  *
@@ -62,7 +54,7 @@ const buildMasterIdByName = (
 ): Map<string, string> => {
   const idsByName = new Map<string, Set<string>>();
   const register = (name: string, id: string): void => {
-    const key = normalizeName(name);
+    const key = participantNameKey(name);
     const ids = idsByName.get(key);
     if (ids) {
       ids.add(id);
@@ -106,10 +98,10 @@ const resolveIdentity = (
   name: string,
   masterIdByName: Map<string, string>
 ): { key: string; masterId?: string } => {
-  const resolved = masterId ?? masterIdByName.get(normalizeName(name));
+  const resolved = masterId ?? masterIdByName.get(participantNameKey(name));
   return resolved
     ? { key: `master:${resolved}`, masterId: resolved }
-    : { key: `name:${normalizeName(name)}` };
+    : { key: `name:${participantNameKey(name)}` };
 };
 
 interface Accumulator {

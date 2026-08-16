@@ -4,6 +4,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { storageManager } from '../../utils/StorageManager';
+import { normalizeParticipantName, participantNameKey } from '../../utils/participantName';
 import { useAllParticipantMasters } from '../../hooks/useStorage';
 import { formatRank } from '../../utils/formatters';
 import { sortMastersByRegistration } from '../../utils/arrayUtils';
@@ -29,7 +30,8 @@ const ParticipantMasterSection: React.FC<ParticipantMasterSectionProps> = ({
 
   const handleSaveEdit = () => {
     if (!editTarget) return;
-    const name = editTarget.name.trim();
+    // 登録時と同じく全角括弧は半角に揃える
+    const name = normalizeParticipantName(editTarget.name);
 
     if (!name) {
       onStatusUpdate('❌ 氏名を入力してください');
@@ -37,12 +39,15 @@ const ParticipantMasterSection: React.FC<ParticipantMasterSectionProps> = ({
     }
 
     // 同名のマスターが2件あると通算成績の名寄せが効かなくなるため、改名で作らせない。
-    // 既存側もtrimして比べる（空白付きで保存された古いデータをすり抜けさせないため）
+    // 比較は空白・括弧の表記ゆれを吸収して行う（見た目が同じ別マスターを防ぐため）
+    const nameKey = participantNameKey(name);
     const duplicate = masters.find(
-      (master) => master.id !== editTarget.id && master.name.trim() === name
+      (master) => master.id !== editTarget.id && participantNameKey(master.name) === nameKey
     );
     if (duplicate) {
-      onStatusUpdate(`❌ 「${name}」は既に登録されています`);
+      // 表記ゆれを無視して引き当てるため、入力した氏名ではなく
+      // 実際にぶつかった相手を出す（「同じに見えないのに重複」と見えないように）
+      onStatusUpdate(`❌ 「${duplicate.name}」は既に登録されています`);
       return;
     }
 

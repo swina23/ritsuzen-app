@@ -21,6 +21,7 @@ import { Competition, ParticipantMaster } from '../types';
 import { logStorageError } from './errorUtils';
 import { normalizeCompetition } from './competitionMigration';
 import { formatJapaneseDateTime, getTodayJapaneseDate } from './dateUtils';
+import { normalizeParticipantName, participantNameKey } from './participantName';
 import type {
   MasterFields,
   StorageBackend,
@@ -458,10 +459,15 @@ export class StorageManager {
   /**
    * 参加者マスターを保存。IDはクライアント側で採番するため、
    * 書き込みの完了を待たずに新しいマスターを同期的に返せる。
+   *
+   * 氏名はここで正規化する。呼び出し側の正規化に任せると、
+   * 新しい画面から呼んだときに未正規化の氏名が入り込み、
+   * 見た目が同じマスターが2件並ぶ余地が残るため。
    */
   saveParticipantMaster(master: Omit<ParticipantMaster, 'id' | 'createdAt'>): ParticipantMaster {
     const newMaster: ParticipantMaster = {
       ...master,
+      name: normalizeParticipantName(master.name),
       id: this.generateId(),
       createdAt: new Date().toISOString(),
     };
@@ -525,12 +531,14 @@ export class StorageManager {
    * 有効なものだけを見ると、一度無効化した人を再登録したときに同名のマスターが
    * もう1件できてしまい、同一人物の通算成績がmasterIdごとに割れるため。
    *
-   * 比較は前後の空白を落として行う。空白付きで保存された古いデータが
-   * 残っていても、見た目が同じなら同じ人として引き当てるため。
+   * 比較は空白と括弧の表記ゆれを吸収して行う(participantNameKey)。
+   * 「今村 (梨)」と「今村（梨）」で別マスターができると、通算成績は
+   * 同じ人として寄せようとして「同名が2件あるので寄せない」に倒れ、
+   * 結局その人の成績が割れるため。
    */
   findMasterByName(name: string): ParticipantMaster | null {
-    const target = name.trim();
-    return this.mastersCache.find((master) => master.name.trim() === target) ?? null;
+    const target = participantNameKey(name);
+    return this.mastersCache.find((master) => participantNameKey(master.name) === target) ?? null;
   }
 
   importParticipantMasters(importData: unknown): ImportResult {
@@ -545,23 +553,24 @@ export class StorageManager {
         return { success: false, error: 'Invalid import data format' };
       }
 
-      // 氏名は前後の空白を落として比較・保存する。
-      // 空白付きのまま取り込むと見た目が同じ別マスターが2件並び、
-      // 一覧でどちらを選んだかで通算成績が2行に割れてしまうため。
-      const existingNames = new Set(this.mastersCache.map((m) => m.name.trim()));
+      // 氏名は表記を揃えて比較・保存する。
+      // 空白や全角括弧の違いだけの氏名をそのまま取り込むと見た目が同じ別マスターが
+      // 2件並び、一覧でどちらを選んだかで通算成績が2行に割れてしまうため。
+      const existingNames = new Set(this.mastersCache.map((m) => participantNameKey(m.name)));
       const now = new Date().toISOString();
 
       const newMasters: ParticipantMaster[] = payload.participantMasters
         .filter((master: ParticipantMaster) => {
           if (!master?.name?.trim() || master.rank === undefined || master.rank === null) return false;
-          if (existingNames.has(master.name.trim())) return false;
+          const key = participantNameKey(master.name);
+          if (existingNames.has(key)) return false;
           // 同一ファイル内に同名が複数あっても1件だけ取り込む
-          existingNames.add(master.name.trim());
+          existingNames.add(key);
           return true;
         })
         .map((master: ParticipantMaster) => ({
           ...master,
-          name: master.name.trim(),
+          name: normalizeParticipantName(master.name),
           id: this.generateId(),
           createdAt: now,
           isActive: master.isActive !== undefined ? master.isActive : true,
