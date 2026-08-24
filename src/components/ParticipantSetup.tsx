@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -152,6 +152,48 @@ const ParticipantSetup: React.FC = () => {
     }
   }, [addParticipant, saveToMaster, name, reading, rank, state.competition?.status]);
 
+  /**
+   * 既にこの大会に登録済みのマスター。一覧で選べないようにするために使う。
+   *
+   * 同じ人を2回登録しても入力は普通に進んでしまい、結果表とExcel/CSVに
+   * 同じ人が2行出て、それぞれに順位が付く。当日の慌ただしい登録では
+   * 起きやすいうえ、参加者リストを目で追わないと気づけない。
+   *
+   * 氏名ではなくmasterIdで見る。同姓同名の別人を誤って弾かないため
+   */
+  const addedMasterIds = useMemo(
+    () =>
+      new Set(
+        (state.competition?.participants ?? [])
+          .map((participant) => participant.masterId)
+          .filter((masterId): masterId is string => Boolean(masterId))
+      ),
+    [state.competition?.participants]
+  );
+
+  // 今この一覧に出ている人。選択中に誰かが無効化・削除すると、選んだIDだけが
+  // 手元に残って追加できなくなるため、選択の掃除と人数の計算で参照する
+  const selectableMasterIds = useMemo(() => new Set(masters.map((master) => master.id)), [masters]);
+
+  /**
+   * 選べなくなった人を選択から外す。
+   *
+   * 外さないと、選択したまま手入力で同じ人を登録し、その参加者を後から削除したとき、
+   * チェックが入ったままの状態で復活する。「消したはずの人」が次の「追加」で
+   * 黙って戻ってくることになり、この画面で防ぎたかった二重登録そのものを招く。
+   *
+   * 中身が変わらないときは元のSetを返す。毎回作り直すとこのeffectが自分を
+   * 呼び続けて止まらなくなるため
+   */
+  useEffect(() => {
+    setSelectedMasters((prev) => {
+      const kept = Array.from(prev).filter(
+        (masterId) => !addedMasterIds.has(masterId) && selectableMasterIds.has(masterId)
+      );
+      return kept.length === prev.size ? prev : new Set(kept);
+    });
+  }, [addedMasterIds, selectableMasterIds]);
+
   const handleMasterSelection = useCallback((masterId: string) => {
     const newSelected = new Set(selectedMasters);
     if (newSelected.has(masterId)) {
@@ -168,6 +210,9 @@ const ParticipantSetup: React.FC = () => {
     }
 
     for (const masterId of selectedMasters) {
+      // 一覧では選べないようにしてあり、選択も掃除しているが、
+      // 二重登録だけは通したくないので追加の直前にもう一度見る
+      if (addedMasterIds.has(masterId)) continue;
       const master = masters.find(m => m.id === masterId);
       if (master) {
         addParticipant({ name: master.name, rank: master.rank, masterId: master.id });
@@ -177,7 +222,17 @@ const ParticipantSetup: React.FC = () => {
     }
 
     setSelectedMasters(new Set());
-  }, [selectedMasters, addParticipant, state.competition?.status, masters]);
+  }, [selectedMasters, addParticipant, state.competition?.status, masters, addedMasterIds]);
+
+  // 実際に追加される人数。掃除のeffectが走るまでの1描画だけ選択が古いままなので、
+  // ボタンの人数は選択数ではなくここで数え直す
+  const pendingSelectedCount = useMemo(
+    () =>
+      Array.from(selectedMasters).filter(
+        (masterId) => !addedMasterIds.has(masterId) && selectableMasterIds.has(masterId)
+      ).length,
+    [selectedMasters, addedMasterIds, selectableMasterIds]
+  );
 
   const filteredMasters = useMemo(() => {
     return filterByRank(masters, filterRank);
@@ -290,9 +345,9 @@ const ParticipantSetup: React.FC = () => {
                   type="button"
                   onClick={handleAddSelectedMasters}
                   className="add-selected-btn"
-                  disabled={selectedMasters.size === 0 || isFinished}
+                  disabled={pendingSelectedCount === 0 || isFinished}
                 >
-                  選択した参加者を追加 ({selectedMasters.size}名)
+                  選択した参加者を追加 ({pendingSelectedCount}名)
                 </button>
               </div>
 
@@ -300,22 +355,29 @@ const ParticipantSetup: React.FC = () => {
                 {masterRows.map(row => (
                   <React.Fragment key={row.label}>
                     <div className="master-row-header">{row.label}</div>
-                    {row.masters.map(master => (
-                      <div key={master.id} className="master-item">
-                        <label className="master-checkbox">
-                          <input
-                            type="checkbox"
-                            checked={selectedMasters.has(master.id)}
-                            onChange={() => handleMasterSelection(master.id)}
-                            disabled={isFinished}
-                          />
-                          <span className="master-info">
-                            <span className="master-name">{master.name}</span>
-                            <span className="master-rank">({formatRank(master.rank)})</span>
-                          </span>
-                        </label>
-                      </div>
-                    ))}
+                    {row.masters.map(master => {
+                      // 追加済みの人はチェックを入れたまま押せなくする。
+                      // 一覧から消すと「さっきまで居た人が消えた」と見えてしまうため、
+                      // 居場所は変えずに選べないことだけを示す
+                      const isAdded = addedMasterIds.has(master.id);
+                      return (
+                        <div key={master.id} className={`master-item ${isAdded ? 'added' : ''}`}>
+                          <label className="master-checkbox">
+                            <input
+                              type="checkbox"
+                              checked={isAdded || selectedMasters.has(master.id)}
+                              onChange={() => handleMasterSelection(master.id)}
+                              disabled={isFinished || isAdded}
+                            />
+                            <span className="master-info">
+                              <span className="master-name">{master.name}</span>
+                              <span className="master-rank">({formatRank(master.rank)})</span>
+                            </span>
+                            {isAdded && <span className="master-added">追加済み</span>}
+                          </label>
+                        </div>
+                      );
+                    })}
                   </React.Fragment>
                 ))}
               </div>

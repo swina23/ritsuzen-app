@@ -983,6 +983,33 @@
   font-size: 14px;
 }
 
+/* 既にこの大会に登録済みの人。一覧からは消さず、選べないことだけを示す。
+   消してしまうと「さっきまで居た人が居ない」と見えて探し直しを招く。
+   .master-item はデータ管理画面(.masters-list)とも共有しているため、
+   参加者登録の一覧(.master-list)に限定する */
+.master-list .master-item.added {
+  background-color: #f8f9fa;
+}
+
+.master-list .master-item.added .master-checkbox {
+  cursor: default;
+}
+
+.master-list .master-item.added .master-name,
+.master-list .master-item.added .master-rank {
+  color: #adb5bd;
+}
+
+.master-list .master-added {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: #6c757d;
+  background-color: #e9ecef;
+  border-radius: 10px;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+
 .form-hint {
   margin: 4px 0 0;
   color: #6c757d;
