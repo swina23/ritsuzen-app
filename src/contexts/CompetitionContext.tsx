@@ -23,7 +23,8 @@ interface CompetitionContextType {
   moveParticipantToGroup: (participantId: string, direction: 'up' | 'down') => void;
   clearGrouping: () => void;
   updateShot: (participantId: string, roundNumber: number, shotIndex: number, hit: boolean | null) => void;
-  finishCompetition: () => void;
+  /** 戻り値は「サーバーまで届いたか」。圏外では端末内のキューに残る */
+  finishCompetition: () => Promise<boolean>;
 }
 
 type CompetitionAction =
@@ -429,8 +430,8 @@ export const CompetitionProvider: React.FC<{ children: ReactNode }> = ({ childre
    * 「降ろす」操作(旧リセットボタン)が必要になり分かりにくかったため、
    * 終了と片付けを1つの操作にまとめている。
    */
-  const finishCompetition = () => {
-    if (!state.competition) return;
+  const finishCompetition = (): Promise<boolean> => {
+    if (!state.competition) return Promise.resolve(false);
 
     const finished: Competition = {
       ...state.competition,
@@ -440,8 +441,13 @@ export const CompetitionProvider: React.FC<{ children: ReactNode }> = ({ childre
 
     // state.competition が null になるので保存用effectは走らない。
     // 終了状態の書き込みとポインタ解除はここでまとめて行う。
-    storageManager.finishCurrentCompetition(finished);
+    const sent = storageManager.finishCurrentCompetition(finished);
+
+    // 送信の完了は待たずに画面を進める。圏外だと数分〜帰宅後まで解決しないため、
+    // ここで待つと大会終了の操作が固まってしまう。届いたかどうかは
+    // 戻り値を受け取った側(App)が知らせる。
     dispatch({ type: 'CLEAR_CURRENT_COMPETITION' });
+    return sent;
   };
 
   return (

@@ -69,11 +69,12 @@
   color: #666;
 }
 
-/* クラウド同期の状態表示。通常時は描画されない。
-   画面下に浮かせる (position: fixed) のは、表示・非表示でページの高さを
-   変えないため。通常フローに置くと、的中入力のたびに出入りするバーが
-   下のコンテンツを押し下げ、記録入力中に画面が上下に揺れる。 */
-.sync-status {
+/* 画面下に浮かせる知らせ (同期状態・大会終了の結果)。通常時は描画されない。
+   position: fixed にするのは、表示・非表示でページの高さを変えないため。
+   通常フローに置くと、的中入力のたびに出入りするバーが下のコンテンツを
+   押し下げ、記録入力中に画面が上下に揺れる。 */
+.sync-status,
+.finish-notice {
   position: fixed;
   left: 50%;
   bottom: calc(16px + env(safe-area-inset-bottom));
@@ -105,10 +106,33 @@
   color: #1565c0;
 }
 
+/* 送信できていない状態。「同期中」と同じ穏やかな見た目だと見落とされるため、
+   警告色にして文言も長くしている (道場を離れる前に気づいてもらう必要がある) */
+.sync-status--unsent {
+  background-color: #fff3e0;
+  color: #e65100;
+  border: 2px solid #e65100;
+  font-weight: bold;
+}
+
 .sync-status--error {
   pointer-events: auto; /* 「閉じる」を押せるようにする */
   background-color: #ffebee;
   color: #c62828;
+}
+
+/* 大会終了がサーバーまで届いたことの知らせ。数秒で自動的に消える */
+.finish-notice {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+
+/* 大会終了は届いたが、他の書き込みがまだ残っている場合は同期バーと同時に出る
+   (再接続直後にキューがまとめて流れるときなど)。位置が同じなので文字が重なる。
+   同期バーの方を優先して、こちらを1段上に逃がす。
+   :has() が使えないブラウザでは今までどおり重なるが、数秒で消える表示のため許容する */
+.app:has(.sync-status) .finish-notice {
+  bottom: calc(70px + env(safe-area-inset-bottom));
 }
 
 .sync-status-dismiss {

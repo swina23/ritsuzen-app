@@ -76,6 +76,16 @@ export class StorageManager {
   private pendingWrites = 0;
 
   /**
+   * 送信が完了した書き込みの累計。増えたことが「通信が生きている」証拠になる。
+   *
+   * 未送信件数だけでは「圏外で溜まっている」と「送信が間に合っていないだけ」を
+   * 区別できない。圏外で入力を続ければ件数は増え続けるし、快調に入力していても
+   * 件数は0になりきらないため、どちらも「未送信が残っている」に見えてしまう。
+   * 完了が一定時間1件も無いことをもって「送信できていない」と判定する。
+   */
+  private completedWrites = 0;
+
+  /**
    * 保存先を切り替えるたびに増える通し番号。
    * 切り替え前に投げた書き込みが後から解決したとき、それが「今のセッションの
    * 書き込み」ではないと判別するために使う。
@@ -256,16 +266,25 @@ export class StorageManager {
    *
    * 保存先が切り替わった後に前の書き込みが解決することがある。その分を
    * 新しいセッションの件数から引くと同期中表示が狂うため、セッションを見て弾く。
+   *
+   * 戻り値は「送信できたか」。呼び出し側が完了を待ちたい場合に使う
+   * (大会終了はその場を離れる前に届いたか確かめたいため)。エラーは中で
+   * 処理済みなので、待たない呼び出し側が未処理のrejectionを抱えることはない。
    */
-  private track(promise: Promise<unknown>, operation: string): void {
+  private track(promise: Promise<unknown>, operation: string): Promise<boolean> {
     const session = this.sessionId;
     this.pendingWrites += 1;
     this.notify();
-    promise
-      .catch((error) => this.handleError(error, operation))
+    return promise
+      .then(() => true)
+      .catch((error) => {
+        this.handleError(error, operation);
+        return false;
+      })
       .finally(() => {
         if (session !== this.sessionId) return;
         this.pendingWrites -= 1;
+        this.completedWrites += 1;
         this.notify();
       });
   }
@@ -294,6 +313,12 @@ export class StorageManager {
 
   /** 未送信の書き込み数 (同期インジケータ用) */
   getPendingWriteCount = (): number => this.pendingWrites;
+
+  /**
+   * 送信が完了した書き込みの累計。値そのものに意味は無く、
+   * 「増えたかどうか」だけを見る (直近に送信が通ったかの判定に使う)。
+   */
+  getCompletedWriteCount = (): number => this.completedWrites;
 
   /**
    * 未同期の書き込みが残っているか。
@@ -359,16 +384,21 @@ export class StorageManager {
    *
    * 大会を途中で破棄する手段は用意していない。破棄したい場合も一度終了させ、
    * データ管理画面から deleteCompetition する。
+   *
+   * 戻り値は「サーバーまで届いたか」。圏外だとFirestoreは書き込みを端末内の
+   * キューに溜めるだけなので、画面上は終了していてもサーバーには反映されない。
+   * 呼び出し側はこれを待って、届いていなければ利用者に知らせること
+   * (道場を出る前に気づけないと、他の端末からは未終了のままに見える)。
    */
-  finishCurrentCompetition(competition: Competition): void {
+  finishCurrentCompetition(competition: Competition): Promise<boolean> {
     const backend = this.writableBackend();
-    if (!backend) return;
+    if (!backend) return Promise.resolve(false);
 
     this.lastSavedJson = null;
     this.currentCompetitionId = null;
 
     const { id, ...fields } = competition;
-    this.track(
+    return this.track(
       (async () => {
         await backend.setCompetition(id, fields);
         await backend.setAppState(null);
@@ -390,10 +420,29 @@ export class StorageManager {
     this.track(backend.setAppState(null), 'releaseCurrentCompetition');
   }
 
-  /** 現在の大会を読み込み */
+  /**
+   * 現在の大会を読み込み。
+   *
+   * 読み込んだ内容を「保存済み」として控える。これをしないと、読み込み直後に走る
+   * 自動保存(CompetitionContext)が、読んだばかりの内容をそのまま書き戻す。
+   * 内容が同じなら無害に見えるが、起動直後のスナップショットがオフライン
+   * キャッシュ(persistentLocalCache)から返った場合は古い内容を掴んでいるため、
+   * 他の端末が済ませた更新 — 大会終了を含む — を上書きしてしまう。
+   *
+   * 控えるのはキャッシュ上の値そのもの。呼び出し側の reducer は
+   * normalizeCompetition を通してから state に入れるが、キャッシュの時点で
+   * 同じ関数を通してあり、この関数は冪等なので同じJSONになる。
+   *
+   * ⚠️ 防げるのは「読んだだけで書き戻す」1回のみ。古い内容を掴んだ端末で
+   * その後に実際の編集をすれば、その保存は古い内容ごとサーバーに載る。
+   * そちらを塞ぐには「現在の大会」もスナップショットを購読して反映する必要があり、
+   * 入力中データとの競合の設計が要るため、まだ手を付けていない。
+   */
   loadCurrentCompetition(): Competition | null {
     if (!this.currentCompetitionId) return null;
-    return this.competitionsCache.find((c) => c.id === this.currentCompetitionId) ?? null;
+    const competition = this.competitionsCache.find((c) => c.id === this.currentCompetitionId) ?? null;
+    this.lastSavedJson = competition ? JSON.stringify(competition) : null;
+    return competition;
   }
 
   // === 大会履歴管理 ===

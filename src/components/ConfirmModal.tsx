@@ -10,6 +10,11 @@ interface ConfirmModalProps {
   onConfirm: () => void;
   onCancel: () => void;
   danger?: boolean;
+  /**
+   * キャンセルボタンを隠す。選択肢のない「知らせるだけ」の用途に使う。
+   * この場合でも onCancel は必要(オーバーレイのクリックで閉じるため)。
+   */
+  hideCancel?: boolean;
 }
 
 const ConfirmModal: React.FC<ConfirmModalProps> = ({
@@ -21,6 +26,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
   onConfirm,
   onCancel,
   danger = false,
+  hideCancel = false,
 }) => {
   if (!isOpen) return null;
 
@@ -30,9 +36,11 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
         <h3 className="modal-title">{title}</h3>
         <p className="modal-message">{message}</p>
         <div className="modal-actions">
-          <button className="modal-cancel-btn" onClick={onCancel}>
-            {cancelLabel}
-          </button>
+          {!hideCancel && (
+            <button className="modal-cancel-btn" onClick={onCancel}>
+              {cancelLabel}
+            </button>
+          )}
           <button
             className={`modal-confirm-btn ${danger ? 'danger' : ''}`}
             onClick={onConfirm}

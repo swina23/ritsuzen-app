@@ -43,3 +43,10 @@ export const useStorageInfo = (): StorageInfo =>
 /** 未同期の書き込みが残っているか (前セッションからの持ち越しも含む) */
 export const useHasPendingWrites = (): boolean =>
   useSyncExternalStore(storageManager.subscribe, storageManager.hasPendingWrites);
+
+/**
+ * 送信が完了した書き込みの累計。
+ * 値ではなく「増えたかどうか」を見て、通信が生きているかを判断するために使う。
+ */
+export const useCompletedWriteCount = (): number =>
+  useSyncExternalStore(storageManager.subscribe, storageManager.getCompletedWriteCount);
