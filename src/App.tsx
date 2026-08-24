@@ -20,9 +20,6 @@ import './App.css';
 declare const __APP_VERSION__: string;
 const VERSION = __APP_VERSION__;
 
-// クラウド版(ritsuzen-app2)でのみバッジを表示し、旧版と見分けられるようにする
-const IS_CLOUD = import.meta.env.VITE_APP_VARIANT === 'cloud';
-
 type AppView = 'setup' | 'participants' | 'scoring' | 'results' | 'career' | 'data';
 
 /** 進行中の大会が無くても開けるタブ（過去の記録を見るため） */
@@ -216,10 +213,7 @@ const AppContent: React.FC = () => {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>
-          射会記録アプリ
-          {IS_CLOUD && <span className="app-variant">クラウド版</span>}
-        </h1>
+        <h1>射会記録アプリ</h1>
         <span className="app-version">v{VERSION}</span>
         <div className="app-account">
           {storageKind && (
