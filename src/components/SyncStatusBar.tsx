@@ -110,7 +110,7 @@ const SyncStatusBar: React.FC = () => {
   if (showUnsent) {
     return (
       <div className="sync-status sync-status--unsent" role="alert">
-        ⚠️ まだ送信できていません。入力はこの端末に残っています。電波の届く場所でアプリを開いてください
+        ⚠️ まだ送信できていません。入力はこの端末に残っており、電波が戻ると自動で送信されます
       </div>
     );
   }
