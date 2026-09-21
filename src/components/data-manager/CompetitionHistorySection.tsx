@@ -3,7 +3,12 @@
  */
 
 import React, { useState } from 'react';
-import { useAllCompetitions, useAllParticipantMasters, useCompetitionHistory } from '../../hooks/useStorage';
+import {
+  useAllCompetitions,
+  useAllParticipantMasters,
+  useCompetitionHistory,
+  useStorageKind
+} from '../../hooks/useStorage';
 import { exportToExcelWithBorders, exportToCSV } from '../../utils/excelExport';
 import { calculateCareerStats } from '../../utils/careerStats';
 import { getTodayJapaneseDate } from '../../utils/dateUtils';
@@ -32,6 +37,7 @@ const CompetitionHistorySection: React.FC<CompetitionHistorySectionProps> = ({
   // Excelの2枚目のシート用。過去の大会を出力するときも通算成績は「現時点の値」を載せる
   const allCompetitions = useAllCompetitions();
   const masters = useAllParticipantMasters();
+  const storageKind = useStorageKind();
 
   const handleExportHistoryExcel = async (competition: Competition) => {
     try {
@@ -39,7 +45,12 @@ const CompetitionHistorySection: React.FC<CompetitionHistorySectionProps> = ({
         competition,
         participants: competition.participants,
         records: competition.records,
-        careerStats: calculateCareerStats(allCompetitions, masters, getTodayJapaneseDate())
+        // 端末保存モード(未ログイン)では通算成績シートを付けない。画面では直近数大会に
+        // 絞って見せているので、Excelだけ全大会分が出ると辻褄が合わなくなる。
+        // 保存先が決まる前(null)も付けない
+        careerStats: storageKind === 'cloud'
+          ? calculateCareerStats(allCompetitions, masters, getTodayJapaneseDate())
+          : undefined
       });
       onStatusUpdate(`✅ ${competition.name}をExcel出力しました`);
     } catch (error) {

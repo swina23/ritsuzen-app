@@ -7,7 +7,7 @@ import { sortRecordsByScore } from '../utils/arrayUtils';
 import { calculateRankings } from '../utils/calculations';
 import { calculateCareerStats } from '../utils/careerStats';
 import { getTodayJapaneseDate } from '../utils/dateUtils';
-import { useAllCompetitions, useAllParticipantMasters } from '../hooks/useStorage';
+import { useAllCompetitions, useAllParticipantMasters, useStorageKind } from '../hooks/useStorage';
 
 const Results: React.FC = () => {
   const { state } = useCompetition();
@@ -31,12 +31,16 @@ const Results: React.FC = () => {
   // Excelの2枚目のシート用。CSVには含めない（1大会分の表という位置づけのため）
   const allCompetitions = useAllCompetitions();
   const masters = useAllParticipantMasters();
+  const storageKind = useStorageKind();
   // 基準日は変数に束縛して依存配列に入れる。式の中で直接呼ぶと、
   // 日付をまたいでも再計算されないうえ lint も気づけない
   const today = getTodayJapaneseDate();
+  // 端末保存モード(未ログイン)では通算成績シートを付けない。画面では直近数大会に
+  // 絞って見せているので、Excelだけ全大会分が出ると辻褄が合わなくなる。
+  // 保存先が決まる前(null)も付けない
   const careerStats = useMemo(
-    () => calculateCareerStats(allCompetitions, masters, today),
-    [allCompetitions, masters, today]
+    () => (storageKind === 'cloud' ? calculateCareerStats(allCompetitions, masters, today) : undefined),
+    [allCompetitions, masters, today, storageKind]
   );
 
   const exportData = useMemo(() => {
