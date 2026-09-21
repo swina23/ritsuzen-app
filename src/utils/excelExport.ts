@@ -2,7 +2,7 @@ import * as ExcelJS from 'exceljs';
 import { Competition, Participant, ParticipantRecord } from '../types';
 import { formatRank } from './formatters';
 import { calculateRankings } from './calculations';
-import { CareerStat, RANKING_MIN_COMPETITIONS } from './careerStats';
+import { CareerStat, RECENT_PERIODS, RANKING_MIN_COMPETITIONS } from './careerStats';
 
 export interface ExcelExportData {
   competition: Competition;
@@ -34,26 +34,39 @@ const buildExportFileName = (competition: Competition, extension: string): strin
 /**
  * ワークブックに「通算成績」シートを追加する。
  * 当該大会の結果だけでなく、その時点での通算成績も一緒に配れるようにするため。
+ *
+ * 順位は通算的中率で付け、直近期間は右側に参考列として並べる（画面と同じ構成）。
+ * 画面では「75.0% (6回)」と1つのセルに詰めているが、Excelでは的中率と出場数を
+ * 別の列に分ける。文字列にすると Excel 側で並べ替えも平均も取れなくなるため。
  */
-const addCareerStatsSheet = (workbook: ExcelJS.Workbook, careerStats: CareerStat[]): void => {
+const addCareerStatsSheet = (
+  workbook: ExcelJS.Workbook,
+  careerStats: CareerStat[]
+): void => {
   const sheet = workbook.addWorksheet('通算成績');
 
-  sheet.mergeCells('A1:G1');
+  // 直近期間ごとに「的中率」「出場数」の2列が増える
+  const columnCount = 7 + RECENT_PERIODS.length * 2;
+  const lastColumn = sheet.getColumn(columnCount).letter;
+
+  sheet.mergeCells(`A1:${lastColumn}1`);
   sheet.getCell('A1').value = '通算成績';
   sheet.getCell('A1').font = { bold: true, size: 14 };
   sheet.getCell('A1').alignment = { horizontal: 'center' };
-  sheet.getCell('A2').value = '通算的中率 = 総的中 ÷ 総射数（各大会の的中率の平均ではありません）';
+  sheet.getCell('A2').value = '的中率 = 総的中 ÷ 総射数（各大会の的中率の平均ではありません）';
   sheet.getCell('A3').value = `※出場${RANKING_MIN_COMPETITIONS}回未満の方は順位を付けず、末尾にまとめています`;
+  sheet.getCell('A4').value = '※直近期間の列は順位に関係しない参考値です（出場数が少ないほど的中率は振れます）';
 
   sheet.addRow([]);
 
   const headerRow = sheet.addRow([
-    '順位', '参加者', '段位', '出場数', '総射数', '総的中', '通算的中率'
+    '順位', '参加者', '段位', '出場数', '総射数', '総的中', '的中率',
+    ...RECENT_PERIODS.flatMap((period) => [`${period.label} 的中率`, `${period.label} 出場数`])
   ]);
   headerRow.eachCell((cell) => {
     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6E6E6' } };
     cell.font = { bold: true };
-    cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
     cell.border = {
       top: { style: 'thin' },
       left: { style: 'thin' },
@@ -71,7 +84,13 @@ const addCareerStatsSheet = (workbook: ExcelJS.Workbook, careerStats: CareerStat
       stat.totalShots,
       stat.totalHits,
       // 数値として入れ、表示だけパーセント書式にする（Excel側で並べ替え・集計できるように）
-      stat.hitRate
+      stat.hitRate,
+      // その期間に一度も引いていない人は空欄ではなく「―」にする。
+      // 空欄だと「0射だった」のか「列の作り漏れ」なのか読み手が判断できないため
+      ...RECENT_PERIODS.flatMap((period): (string | number)[] => {
+        const recent = stat.recent[period.key];
+        return recent ? [recent.hitRate, recent.competitionsCount] : ['―', '―'];
+      })
     ]);
     row.eachCell((cell) => {
       cell.border = {
@@ -84,11 +103,19 @@ const addCareerStatsSheet = (workbook: ExcelJS.Workbook, careerStats: CareerStat
     });
     row.getCell(2).alignment = { horizontal: 'left', vertical: 'middle' };
     row.getCell(7).numFmt = '0.0%';
+    RECENT_PERIODS.forEach((_period, index) => {
+      // 的中率の列だけ書式を付ける（8, 10, ... と2列おき）。
+      // 「―」が入っている行に付いても表示は変わらない
+      row.getCell(8 + index * 2).numFmt = '0.0%';
+    });
   });
 
   // 行を追加した後に sheet.columns へ代入すると既存行が壊れることがあるため、
   // 既存シートと同じく getColumn で個別に設定する
-  [6, 16, 8, 8, 10, 10, 12].forEach((width, index) => {
+  [
+    6, 16, 8, 8, 10, 10, 12,
+    ...RECENT_PERIODS.flatMap(() => [14, 12])
+  ].forEach((width, index) => {
     sheet.getColumn(index + 1).width = width;
   });
 };
@@ -500,7 +527,7 @@ export const exportToExcelWithBorders = async (data: ExcelExportData): Promise<v
     }
   });
   
-  // 2枚目のシート: 通算成績（渡されたときだけ）
+  // 2枚目のシート: 通算成績（渡されたときだけ）。記録が無ければ空のシートを作らない
   if (data.careerStats && data.careerStats.length > 0) {
     addCareerStatsSheet(workbook, data.careerStats);
   }

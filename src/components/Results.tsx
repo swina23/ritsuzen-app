@@ -6,6 +6,7 @@ import { getShotDisplay, getShotClass } from '../utils/shotHelpers';
 import { sortRecordsByScore } from '../utils/arrayUtils';
 import { calculateRankings } from '../utils/calculations';
 import { calculateCareerStats } from '../utils/careerStats';
+import { getTodayJapaneseDate } from '../utils/dateUtils';
 import { useAllCompetitions, useAllParticipantMasters } from '../hooks/useStorage';
 
 const Results: React.FC = () => {
@@ -27,12 +28,15 @@ const Results: React.FC = () => {
     return record.rank;
   }, [state.competition?.handicapEnabled]);
 
-  // Excelの2枚目シート用。CSVには含めない（1大会分の表という位置づけのため）
+  // Excelの2枚目のシート用。CSVには含めない（1大会分の表という位置づけのため）
   const allCompetitions = useAllCompetitions();
   const masters = useAllParticipantMasters();
+  // 基準日は変数に束縛して依存配列に入れる。式の中で直接呼ぶと、
+  // 日付をまたいでも再計算されないうえ lint も気づけない
+  const today = getTodayJapaneseDate();
   const careerStats = useMemo(
-    () => calculateCareerStats(allCompetitions, masters),
-    [allCompetitions, masters]
+    () => calculateCareerStats(allCompetitions, masters, today),
+    [allCompetitions, masters, today]
   );
 
   const exportData = useMemo(() => {

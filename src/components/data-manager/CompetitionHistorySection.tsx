@@ -6,6 +6,7 @@ import React, { useState } from 'react';
 import { useAllCompetitions, useAllParticipantMasters, useCompetitionHistory } from '../../hooks/useStorage';
 import { exportToExcelWithBorders, exportToCSV } from '../../utils/excelExport';
 import { calculateCareerStats } from '../../utils/careerStats';
+import { getTodayJapaneseDate } from '../../utils/dateUtils';
 import { storageManager } from '../../utils/StorageManager';
 import { useCompetition } from '../../contexts/CompetitionContext';
 import ConfirmModal from '../ConfirmModal';
@@ -28,7 +29,7 @@ const CompetitionHistorySection: React.FC<CompetitionHistorySectionProps> = ({
   const { state } = useCompetition();
   const [deleteTarget, setDeleteTarget] = useState<Competition | null>(null);
   const [showAll, setShowAll] = useState(false);
-  // Excelの2枚目シート用。過去の大会を出力するときも通算成績は「現時点の値」を載せる
+  // Excelの2枚目のシート用。過去の大会を出力するときも通算成績は「現時点の値」を載せる
   const allCompetitions = useAllCompetitions();
   const masters = useAllParticipantMasters();
 
@@ -38,7 +39,7 @@ const CompetitionHistorySection: React.FC<CompetitionHistorySectionProps> = ({
         competition,
         participants: competition.participants,
         records: competition.records,
-        careerStats: calculateCareerStats(allCompetitions, masters)
+        careerStats: calculateCareerStats(allCompetitions, masters, getTodayJapaneseDate())
       });
       onStatusUpdate(`✅ ${competition.name}をExcel出力しました`);
     } catch (error) {

@@ -2033,6 +2033,13 @@
   font-size: 14px;
 }
 
+/* 直近期間の列。通算の的中率より控えめにして、順位とは無関係の参考値だと分かるようにする。
+   「75.0% (6回)」が途中で折り返すと読みにくいので改行させない */
+.results-table td.career-stats-recent {
+  color: #555;
+  white-space: nowrap;
+}
+
 .career-stats-empty {
   background-color: #f8f9fa;
   padding: 20px;
