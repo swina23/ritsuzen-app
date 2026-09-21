@@ -83,11 +83,10 @@ const CareerStats: React.FC = () => {
         <p className="career-stats-note">
           {`集計対象: ${competitions.length}大会 ／ 的中率は「総的中 ÷ 総射数」で計算しています`}
         </p>
+        {/* RECENT_PERIODS に期間を足すときは、この文言も併せて見直すこと */}
         {recentPeriods.length > 0 && (
           <p className="career-stats-note">
-            右の{recentPeriods.map((period) => period.label).join('・')}
-            は順位に関係しない参考値です。括弧内はその期間の出場回数で、
-            回数が少ないほど的中率は振れやすくなります。
+            直近6ヶ月は順位に関係しない参考値です。括弧内は6ヶ月間の出場回数です。
           </p>
         )}
         {stats.some((stat) => !stat.ranked) && (
