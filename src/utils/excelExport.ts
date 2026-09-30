@@ -1,4 +1,6 @@
-import * as ExcelJS from 'exceljs';
+// 型だけを静的に取り込む。import type はビルド時に消えるので、
+// ExcelJS本体は exportToExcelWithBorders の中で動的に読み込む（下のコメント参照）
+import type { Workbook } from 'exceljs';
 import { Competition, Participant, ParticipantRecord } from '../types';
 import { formatRank } from './formatters';
 import { calculateRankings } from './calculations';
@@ -40,7 +42,7 @@ const buildExportFileName = (competition: Competition, extension: string): strin
  * 別の列に分ける。文字列にすると Excel 側で並べ替えも平均も取れなくなるため。
  */
 const addCareerStatsSheet = (
-  workbook: ExcelJS.Workbook,
+  workbook: Workbook,
   careerStats: CareerStat[]
 ): void => {
   const sheet = workbook.addWorksheet('通算成績');
@@ -132,6 +134,11 @@ const withFreshRankings = (records: ParticipantRecord[]): ParticipantRecord[] =>
 export const exportToExcelWithBorders = async (data: ExcelExportData): Promise<void> => {
   const { competition, participants } = data;
   const records = withFreshRankings(data.records);
+
+  // ExcelJSは依存のJSZipを含めて1MB以上あり、起動時に読み込むと初回表示が
+  // その分だけ重くなる。使うのはExcel出力ボタンを押したときだけなので、
+  // ここで初めて読み込む（ボタンを押さない人は一切ダウンロードしない）
+  const ExcelJS = await import('exceljs');
 
   // ExcelJSワークブックを作成
   const workbook = new ExcelJS.Workbook();
