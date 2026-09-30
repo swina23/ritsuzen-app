@@ -20,8 +20,8 @@ npm run preview
 ```
 
 ### Deployment
-- Deployed on Vercel at: https://ritsuzen-app.vercel.app
-- Auto-deploys on push to main branch
+- Deployed on Vercel at: https://ritsuzen-app2.vercel.app
+- Vercel プロジェクトは `ritsuzen-app2`、Production Branch は `cloud`（push すると自動デプロイ）
 - Build command: `tsc -b && vite build`
 
 ## 🏗️ Architecture Overview
