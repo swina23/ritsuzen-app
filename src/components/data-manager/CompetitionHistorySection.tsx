@@ -11,7 +11,9 @@ import {
 } from '../../hooks/useStorage';
 import {
   describeExportError,
+  EXCELJS_LOAD_FAILURE_GUIDE,
   ExcelExportError,
+  isExcelJSLoadFailure,
   exportToExcelWithBorders,
   exportToCSV
 } from '../../utils/excelExport';
@@ -70,8 +72,9 @@ const CompetitionHistorySection: React.FC<CompetitionHistorySectionProps> = ({
       console.error('Excel export failed:', error);
       // 「失敗しました」だけでは、PCで再現しない端末固有の失敗（iPadのSafariだけ等）の
       // 原因を追えない。スクショで原因が分かるよう、段階・エラー内容・版・保存先も出す
+      const guide = isExcelJSLoadFailure(error) ? `${EXCELJS_LOAD_FAILURE_GUIDE}。` : '';
       onStatusUpdate(
-        `❌ Excel出力に失敗しました（${describeExportError(error)}）[v${__APP_VERSION__} / ${storageKind ?? '保存先未確定'}]`
+        `❌ Excel出力に失敗しました。${guide}（${describeExportError(error)}）[v${__APP_VERSION__} / ${storageKind ?? '保存先未確定'}]`
       );
     }
   };

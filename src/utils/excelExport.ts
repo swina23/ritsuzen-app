@@ -180,8 +180,48 @@ export const describeExportError = (error: unknown): string => {
   return stage ? `${stage}で失敗: ${detail}` : detail;
 };
 
+const LOAD_STAGE = 'ExcelJSの読み込み';
+
+let excelJSPromise: Promise<typeof import('exceljs')> | null = null;
+
+/**
+ * ExcelJSを読み込む。先読みとボタン押下で同じ読み込みを共有する。
+ *
+ * 失敗したら覚えておかずに捨て、次の呼び出しで読み込み直す。ただしSafariは
+ * 失敗したモジュールをページ単位で覚えていて、再読み込みするまで即失敗を返す
+ * （電波の悪い会場で一度失敗すると、何度押しても失敗し続けた）。そのため
+ * 失敗時は画面で再読み込みを案内する（isExcelJSLoadFailure 参照）
+ */
+const loadExcelJS = (): Promise<typeof import('exceljs')> => {
+  if (!excelJSPromise) {
+    excelJSPromise = import('exceljs').catch((error: unknown) => {
+      excelJSPromise = null;
+      throw error;
+    });
+  }
+  return excelJSPromise;
+};
+
+/**
+ * 起動後の空き時間にExcelJSを先に読み込んでおく。会場で電波が悪くなる前、
+ * 電波のよい場所でアプリを開いた時点で取得を済ませておくため。
+ * 初回表示を遅らせないよう、呼ぶ側は画面が出たあとに呼ぶこと
+ */
+export const preloadExcelJS = (): void => {
+  // 失敗してもここでは何もしない。ボタンを押したときに改めて案内する
+  loadExcelJS().catch(() => {});
+};
+
+/** ExcelJS本体の読み込み（通信）で失敗したか。データ側の不具合と案内を分けるために使う */
+export const isExcelJSLoadFailure = (error: unknown): boolean =>
+  error instanceof ExcelExportError && error.stage === LOAD_STAGE;
+
+/** 読み込み失敗時に、エラー詳細の前に出す案内 */
+export const EXCELJS_LOAD_FAILURE_GUIDE =
+  '通信が不安定でExcel出力の機能を読み込めませんでした。電波のよい場所でページを再読み込みしてから、もう一度お試しください';
+
 export const exportToExcelWithBorders = async (data: ExcelExportData): Promise<void> => {
-  const progress = { stage: 'ExcelJSの読み込み' };
+  const progress = { stage: LOAD_STAGE };
   try {
     await buildAndDownloadExcel(data, progress);
   } catch (error) {
@@ -196,9 +236,9 @@ const buildAndDownloadExcel = async (
   const { competition, participants } = data;
 
   // ExcelJSは依存のJSZipを含めて1MB以上あり、起動時に読み込むと初回表示が
-  // その分だけ重くなる。使うのはExcel出力ボタンを押したときだけなので、
-  // ここで初めて読み込む（ボタンを押さない人は一切ダウンロードしない）
-  const ExcelJS = await import('exceljs');
+  // その分だけ重くなる。起動時には読み込まず、画面が出たあとに preloadExcelJS で先読みし、
+  // 間に合っていなければここで読み込む
+  const ExcelJS = await loadExcelJS();
 
   progress.stage = 'シートの作成';
   const records = withFreshRankings(data.records);

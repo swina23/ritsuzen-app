@@ -15,6 +15,7 @@ import ConfirmModal from './components/ConfirmModal';
 import SyncStatusBar from './components/SyncStatusBar';
 import { useStorageKind } from './hooks/useStorage';
 import { createErrorReport, saveErrorReport } from './utils/errorUtils';
+import { preloadExcelJS } from './utils/excelExport';
 import './App.css';
 
 declare const __APP_VERSION__: string;
@@ -79,6 +80,18 @@ const AppContent: React.FC = () => {
     finishRequestRef.current += 1;
     setFinishNotice(null);
   };
+
+  // Excel出力用のExcelJSを、画面が出て手が空いたときに先読みしておく。
+  // ボタンを押した時点で取りに行くと、電波の悪い会場では読み込めないことがあった。
+  // SafariはrequestIdleCallbackに対応していないので、その場合は少し待ってから読む
+  useEffect(() => {
+    if (typeof window.requestIdleCallback === 'function') {
+      const id = window.requestIdleCallback(preloadExcelJS, { timeout: 5000 });
+      return () => window.cancelIdleCallback(id);
+    }
+    const timer = window.setTimeout(preloadExcelJS, 2000);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   // ログインが成立したらログイン画面を閉じる
   useEffect(() => {

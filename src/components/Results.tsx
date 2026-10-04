@@ -1,6 +1,12 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useCompetition } from '../contexts/CompetitionContext';
-import { exportToExcelWithBorders, exportToCSV } from '../utils/excelExport';
+import {
+  describeExportError,
+  EXCELJS_LOAD_FAILURE_GUIDE,
+  exportToExcelWithBorders,
+  exportToCSV,
+  isExcelJSLoadFailure
+} from '../utils/excelExport';
 import { formatRank } from '../utils/formatters';
 import { getShotDisplay, getShotClass } from '../utils/shotHelpers';
 import { sortRecordsByScore } from '../utils/arrayUtils';
@@ -8,6 +14,9 @@ import { calculateRankings } from '../utils/calculations';
 import { calculateCareerStats } from '../utils/careerStats';
 import { getTodayJapaneseDate } from '../utils/dateUtils';
 import { useAllCompetitions, useAllParticipantMasters, useStorageKind } from '../hooks/useStorage';
+import StatusMessage from './data-manager/StatusMessage';
+
+declare const __APP_VERSION__: string;
 
 const Results: React.FC = () => {
   const { state } = useCompetition();
@@ -53,11 +62,23 @@ const Results: React.FC = () => {
     };
   }, [state.competition, careerStats]);
 
+  // 失敗したときだけ出す。押し直したら一旦消す
+  const [exportError, setExportError] = useState('');
+
   const handleExcelExport = useCallback(async () => {
-    if (exportData) {
+    if (!exportData) return;
+    setExportError('');
+    try {
       await exportToExcelWithBorders(exportData);
+    } catch (error) {
+      console.error('Excel export failed:', error);
+      // データ管理の大会履歴からの出力と同じ形式。スクショで原因を追えるよう詳細も出す
+      const guide = isExcelJSLoadFailure(error) ? `${EXCELJS_LOAD_FAILURE_GUIDE}。` : '';
+      setExportError(
+        `❌ Excel出力に失敗しました。${guide}（${describeExportError(error)}）[v${__APP_VERSION__} / ${storageKind ?? '保存先未確定'}]`
+      );
     }
-  }, [exportData]);
+  }, [exportData, storageKind]);
 
   const handleCSVExport = useCallback(() => {
     if (exportData) {
@@ -82,6 +103,7 @@ const Results: React.FC = () => {
           </button>
         </div>
       </div>
+      <StatusMessage message={exportError} />
       
       <div className="competition-info">
         <h3>{state.competition.name}</h3>
