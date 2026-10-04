@@ -9,13 +9,20 @@ import {
   useCompetitionHistory,
   useStorageKind
 } from '../../hooks/useStorage';
-import { exportToExcelWithBorders, exportToCSV } from '../../utils/excelExport';
+import {
+  describeExportError,
+  ExcelExportError,
+  exportToExcelWithBorders,
+  exportToCSV
+} from '../../utils/excelExport';
 import { calculateCareerStats } from '../../utils/careerStats';
 import { getTodayJapaneseDate } from '../../utils/dateUtils';
 import { storageManager } from '../../utils/StorageManager';
 import { useCompetition } from '../../contexts/CompetitionContext';
 import ConfirmModal from '../ConfirmModal';
 import { Competition } from '../../types';
+
+declare const __APP_VERSION__: string;
 
 interface CompetitionHistorySectionProps {
   onStatusUpdate: (message: string) => void;
@@ -41,21 +48,31 @@ const CompetitionHistorySection: React.FC<CompetitionHistorySectionProps> = ({
 
   const handleExportHistoryExcel = async (competition: Competition) => {
     try {
+      let careerStats;
+      try {
+        // 端末保存モード(未ログイン)では通算成績シートを付けない。画面では直近数大会に
+        // 絞って見せているので、Excelだけ全大会分が出ると辻褄が合わなくなる。
+        // 保存先が決まる前(null)も付けない
+        careerStats = storageKind === 'cloud'
+          ? calculateCareerStats(allCompetitions, masters, getTodayJapaneseDate())
+          : undefined;
+      } catch (error) {
+        throw new ExcelExportError('通算成績の計算', error);
+      }
       await exportToExcelWithBorders({
         competition,
         participants: competition.participants,
         records: competition.records,
-        // 端末保存モード(未ログイン)では通算成績シートを付けない。画面では直近数大会に
-        // 絞って見せているので、Excelだけ全大会分が出ると辻褄が合わなくなる。
-        // 保存先が決まる前(null)も付けない
-        careerStats: storageKind === 'cloud'
-          ? calculateCareerStats(allCompetitions, masters, getTodayJapaneseDate())
-          : undefined
+        careerStats
       });
       onStatusUpdate(`✅ ${competition.name}をExcel出力しました`);
     } catch (error) {
       console.error('Excel export failed:', error);
-      onStatusUpdate('❌ Excel出力に失敗しました');
+      // 「失敗しました」だけでは、PCで再現しない端末固有の失敗（iPadのSafariだけ等）の
+      // 原因を追えない。スクショで原因が分かるよう、段階・エラー内容・版・保存先も出す
+      onStatusUpdate(
+        `❌ Excel出力に失敗しました（${describeExportError(error)}）[v${__APP_VERSION__} / ${storageKind ?? '保存先未確定'}]`
+      );
     }
   };
 

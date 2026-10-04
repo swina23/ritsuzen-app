@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import StatusMessage from './data-manager/StatusMessage';
 import StorageInfo from './data-manager/StorageInfo';
 import DataExportSection from './data-manager/DataExportSection';
@@ -9,9 +9,16 @@ import CompetitionHistorySection from './data-manager/CompetitionHistorySection'
 const DataManager: React.FC = () => {
   const [importStatus, setImportStatus] = useState<string>('');
   
+  const clearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const handleStatusUpdate = (message: string) => {
     setImportStatus(message);
-    setTimeout(() => setImportStatus(''), 3000);
+    // 直前のメッセージのタイマーが残っていると、新しいメッセージまで3秒以内に消されてしまう
+    if (clearTimerRef.current) clearTimeout(clearTimerRef.current);
+    clearTimerRef.current = null;
+    // 失敗は消さない。エラー内容をスクショで送ってもらえるよう、読み終わるまで残しておく
+    if (message.startsWith('❌')) return;
+    clearTimerRef.current = setTimeout(() => setImportStatus(''), 3000);
   };
   
   const handleMastersUpdated = () => {

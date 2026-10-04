@@ -131,14 +131,77 @@ const addCareerStatsSheet = (
 const withFreshRankings = (records: ParticipantRecord[]): ParticipantRecord[] =>
   calculateRankings(records.map(record => ({ ...record })));
 
+/**
+ * Excel出力のどの段階で失敗したかを持たせたエラー。
+ * iPadのSafariだけで失敗するなど、PCで再現しない失敗を画面のスクショから追えるようにする。
+ * Safariのエラー文は「Importing a module script failed.」のように短く場所が分からないため
+ */
+export class ExcelExportError extends Error {
+  readonly stage: string;
+  readonly original: unknown;
+
+  constructor(stage: string, original: unknown) {
+    super(original instanceof Error ? original.message : String(original));
+    this.name = 'ExcelExportError';
+    this.stage = stage;
+    this.original = original;
+  }
+}
+
+/**
+ * 失敗時に画面へ出す説明。段階・エラーの種類と内容・スタックの先頭行を並べる。
+ * スタックの先頭行（Safariなら「関数名@URL:行:列」）で、exceljsとアプリ本体の
+ * どちらのファイルで落ちたかが分かる
+ */
+export const describeExportError = (error: unknown): string => {
+  const stage = error instanceof ExcelExportError ? error.stage : undefined;
+  const original = error instanceof ExcelExportError ? error.original : error;
+
+  let detail: string;
+  if (original instanceof Error) {
+    // Chromeのスタックは1行目が「名前: メッセージ」の繰り返しなので、それを飛ばした最初の行を使う
+    const firstStackLine = original.stack
+      ?.split('\n')
+      .map((line) => line.trim())
+      .find((line) => line !== '' && !line.includes(original.message));
+    detail = `${original.name}: ${original.message}`;
+    if (firstStackLine) {
+      detail += ` / ${firstStackLine}`;
+    }
+  } else {
+    // Error以外で reject された場合、String() だと [object Object] になって中身が見えない
+    try {
+      detail = JSON.stringify(original) ?? String(original);
+    } catch {
+      detail = String(original);
+    }
+  }
+
+  return stage ? `${stage}で失敗: ${detail}` : detail;
+};
+
 export const exportToExcelWithBorders = async (data: ExcelExportData): Promise<void> => {
+  const progress = { stage: 'ExcelJSの読み込み' };
+  try {
+    await buildAndDownloadExcel(data, progress);
+  } catch (error) {
+    throw new ExcelExportError(progress.stage, error);
+  }
+};
+
+const buildAndDownloadExcel = async (
+  data: ExcelExportData,
+  progress: { stage: string }
+): Promise<void> => {
   const { competition, participants } = data;
-  const records = withFreshRankings(data.records);
 
   // ExcelJSは依存のJSZipを含めて1MB以上あり、起動時に読み込むと初回表示が
   // その分だけ重くなる。使うのはExcel出力ボタンを押したときだけなので、
   // ここで初めて読み込む（ボタンを押さない人は一切ダウンロードしない）
   const ExcelJS = await import('exceljs');
+
+  progress.stage = 'シートの作成';
+  const records = withFreshRankings(data.records);
 
   // ExcelJSワークブックを作成
   const workbook = new ExcelJS.Workbook();
@@ -536,11 +599,14 @@ export const exportToExcelWithBorders = async (data: ExcelExportData): Promise<v
   
   // 2枚目のシート: 通算成績（渡されたときだけ）。記録が無ければ空のシートを作らない
   if (data.careerStats && data.careerStats.length > 0) {
+    progress.stage = '通算成績シートの作成';
     addCareerStatsSheet(workbook, data.careerStats);
   }
 
   // ファイルを書き込み
+  progress.stage = 'ファイルの書き出し';
   const buffer = await workbook.xlsx.writeBuffer();
+  progress.stage = 'ダウンロード';
   const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
