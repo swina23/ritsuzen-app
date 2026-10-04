@@ -140,30 +140,23 @@ const TimerPanel: React.FC = () => {
       {!isFinished && (
         <div className="timer-controls">
           {!running && !complete && (
-            <>
-              <button type="button" className="timer-btn start" onClick={startTimer}>
-                スタート
-              </button>
-              <p className="timer-hint">揖をしたらスタートを押してください</p>
-            </>
+            <button type="button" className="timer-btn start" onClick={startTimer}>
+              スタート
+            </button>
           )}
           {running && (
             <>
               <button type="button" className="timer-btn stop" onClick={stopTimer}>
                 ストップ
               </button>
-              <p className="timer-hint">
-                {isLastGroup
-                  ? '最後の矢を射終えたら押してください'
-                  : '最後の矢を射終えたら押してください。次の組が同時にスタートします'}
-              </p>
+              {/* 最後の組は次が無いので、自動スタートの案内は出さない */}
+              {!isLastGroup && (
+                <p className="timer-hint">ストップを押すと次のグループの計時が自動的に開始します</p>
+              )}
               {canCancelStart && (
-                <>
-                  <button type="button" className="timer-btn cancel" onClick={cancelTimerStart}>
-                    スタートを取り消す
-                  </button>
-                  <p className="timer-hint">次の組の揖が遅れたときや、休憩をはさむときに押してください</p>
-                </>
+                <button type="button" className="timer-btn cancel" onClick={cancelTimerStart}>
+                  スタートを取り消す
+                </button>
               )}
             </>
           )}
