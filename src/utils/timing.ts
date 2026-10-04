@@ -101,6 +101,36 @@ export const stopTimer = (
   return { groupTimings: nextTimings, timer: nextTimer };
 };
 
+/** 所要時間の表（行: グループ、列: 立目）。記録の無い組は null */
+export interface TimingTable {
+  roundsCount: number;
+  rows: { group: number; seconds: (number | null)[] }[];
+}
+
+/**
+ * 結果画面とExcelに出す所要時間の表を作る。記録が1件も無ければ null。
+ * 計測のあとで組分けを変えることもあるので、今の組に加えて記録にある組も行に出す
+ */
+export const buildTimingTable = (competition: Competition): TimingTable | null => {
+  const groupTimings = competition.groupTimings ?? [];
+  if (groupTimings.length === 0) return null;
+
+  const groups = [
+    ...new Set([...getGroupNumbers(competition.participants), ...groupTimings.map(t => t.group)])
+  ].sort((a, b) => a - b);
+
+  return {
+    roundsCount: competition.roundsCount,
+    rows: groups.map(group => ({
+      group,
+      seconds: Array.from({ length: competition.roundsCount }, (_, i) => {
+        const timing = groupTimings.find(t => t.roundNumber === i + 1 && t.group === group);
+        return timing ? getTimingSeconds(timing) : null;
+      })
+    }))
+  };
+};
+
 /** 経過ミリ秒を秒に。端末の時計が戻った場合に負にならないよう0で止める */
 export const toElapsedSeconds = (startedAt: number, now: number): number =>
   Math.max(0, Math.floor((now - startedAt) / 1000));

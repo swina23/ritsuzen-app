@@ -7,7 +7,8 @@ import {
   exportToCSV,
   isExcelJSLoadFailure
 } from '../utils/excelExport';
-import { formatRank } from '../utils/formatters';
+import { formatGroup, formatRank } from '../utils/formatters';
+import { buildTimingTable, formatDuration, getFinalBellSeconds, isOverFinalBell } from '../utils/timing';
 import { getShotDisplay, getShotClass } from '../utils/shotHelpers';
 import { sortRecordsByScore } from '../utils/arrayUtils';
 import { calculateRankings } from '../utils/calculations';
@@ -52,6 +53,11 @@ const Results: React.FC = () => {
     [allCompetitions, masters, today, storageKind]
   );
 
+  const timingTable = useMemo(
+    () => (state.competition ? buildTimingTable(state.competition) : null),
+    [state.competition]
+  );
+
   const exportData = useMemo(() => {
     if (!state.competition) return null;
     return {
@@ -89,6 +95,8 @@ const Results: React.FC = () => {
   if (!state.competition || state.competition.participants.length === 0) {
     return <div>データがありません</div>;
   }
+
+  const finalBellSeconds = getFinalBellSeconds(state.competition);
 
   return (
     <div className="results">
@@ -164,6 +172,42 @@ const Results: React.FC = () => {
           </tbody>
         </table>
       </div>
+
+      {timingTable && (
+        <div className="timing-results">
+          <h3>所要時間</h3>
+          <p className="timing-results-note">
+            本鈴 {formatDuration(finalBellSeconds)}。赤字は本鈴を超えた組
+          </p>
+          <div className="results-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>グループ</th>
+                  {Array.from({ length: timingTable.roundsCount }, (_, i) => (
+                    <th key={i}>{i + 1}立目</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {timingTable.rows.map(row => (
+                  <tr key={row.group}>
+                    <td>{formatGroup(row.group)}</td>
+                    {row.seconds.map((seconds, roundIndex) => (
+                      <td
+                        key={roundIndex}
+                        className={seconds !== null && isOverFinalBell(seconds, finalBellSeconds) ? 'timing-over' : ''}
+                      >
+                        {seconds !== null ? formatDuration(seconds) : '–'}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       <div className="detailed-results">
         <h3>詳細記録</h3>

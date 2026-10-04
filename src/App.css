@@ -2137,3 +2137,23 @@
   background-color: #eceff1;
   color: #546e7a;
 }
+/* 結果画面の所要時間の表 */
+.timing-results h3 {
+  color: #2c3e50;
+  margin-bottom: 4px;
+}
+
+.timing-results-note {
+  margin: 0 0 10px;
+  color: #666;
+  font-size: 14px;
+}
+
+.timing-results .results-table td {
+  font-variant-numeric: tabular-nums;
+}
+
+.timing-results .results-table td.timing-over {
+  color: #f44336;
+  font-weight: bold;
+}

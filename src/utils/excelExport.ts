@@ -2,7 +2,8 @@
 // ExcelJS本体は exportToExcelWithBorders の中で動的に読み込む（下のコメント参照）
 import type { Workbook } from 'exceljs';
 import { Competition, Participant, ParticipantRecord } from '../types';
-import { formatRank } from './formatters';
+import { formatGroup, formatRank } from './formatters';
+import { buildTimingTable, formatDuration, getFinalBellSeconds, isOverFinalBell } from './timing';
 import { calculateRankings } from './calculations';
 import { CareerStat, RECENT_PERIODS, RANKING_MIN_COMPETITIONS } from './careerStats';
 
@@ -533,6 +534,69 @@ const buildAndDownloadExcel = async (
     positiveRow.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
   }
   
+  // 所要時間の表（計測した組があるときだけ）。
+  // 上の成績表と同じ列に立目を揃えるため、グループ名は A:B、各立目は5列分を結合して1セルにする
+  const timingTable = buildTimingTable(competition);
+  if (timingTable) {
+    const finalBellSeconds = getFinalBellSeconds(competition);
+    const thinBorder = {
+      top: { style: 'thin' as const },
+      left: { style: 'thin' as const },
+      bottom: { style: 'thin' as const },
+      right: { style: 'thin' as const }
+    };
+    const roundStartCol = (roundIndex: number) => 3 + roundIndex * 5;
+
+    worksheet.addRow([]);
+    const titleRow = worksheet.addRow([
+      `所要時間（本鈴 ${formatDuration(finalBellSeconds)}。赤字は本鈴を超えた組）`
+    ]);
+    titleRow.getCell(1).font = { bold: true, size: 11 };
+
+    const timingHeaderRow = worksheet.addRow([]);
+    const timingHeaderRowNumber = timingHeaderRow.number;
+    worksheet.mergeCells(timingHeaderRowNumber, 1, timingHeaderRowNumber, 2);
+    timingHeaderRow.getCell(1).value = 'グループ';
+    for (let i = 0; i < timingTable.roundsCount; i++) {
+      const startCol = roundStartCol(i);
+      worksheet.mergeCells(timingHeaderRowNumber, startCol, timingHeaderRowNumber, startCol + 4);
+      timingHeaderRow.getCell(startCol).value = `${i + 1}立目`;
+    }
+
+    timingTable.rows.forEach(timingRow => {
+      const row = worksheet.addRow([]);
+      worksheet.mergeCells(row.number, 1, row.number, 2);
+      row.getCell(1).value = formatGroup(timingRow.group);
+      timingRow.seconds.forEach((seconds, i) => {
+        const startCol = roundStartCol(i);
+        worksheet.mergeCells(row.number, startCol, row.number, startCol + 4);
+        if (seconds === null) return;
+        // 時刻の値（日単位）で入れて、Excel上でも足し算や平均ができるようにする
+        const cell = row.getCell(startCol);
+        cell.value = seconds / 86400;
+        cell.numFmt = '[m]:ss';
+        if (isOverFinalBell(seconds, finalBellSeconds)) {
+          cell.font = { bold: true, color: { argb: 'FFF44336' } };
+        }
+      });
+    });
+
+    // 結合したセルは先頭のセルにしか罫線が付かないので、範囲内の全セルに付ける
+    const timingLastRow = worksheet.lastRow?.number ?? timingHeaderRowNumber;
+    const timingLastCol = roundStartCol(timingTable.roundsCount - 1) + 4;
+    for (let r = timingHeaderRowNumber; r <= timingLastRow; r++) {
+      for (let c = 1; c <= timingLastCol; c++) {
+        const cell = worksheet.getCell(r, c);
+        cell.border = thinBorder;
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        if (r === timingHeaderRowNumber) {
+          cell.font = { bold: true };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6E6E6' } };
+        }
+      }
+    }
+  }
+
   // 列幅の設定（動的生成）
   const colWidths = [12, 6]; // 参加者: 12, 段位: 6
   
