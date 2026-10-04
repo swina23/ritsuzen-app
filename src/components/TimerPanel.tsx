@@ -16,7 +16,6 @@ import {
   TimerPhase,
   toElapsedSeconds
 } from '../utils/timing';
-import ConfirmModal from './ConfirmModal';
 import './TimerPanel.css';
 
 const PHASE_LABELS: Record<TimerPhase, string> = {
@@ -44,7 +43,7 @@ const pointOnCircle = (degrees: number, radius: number) => {
  * 色と文字で知らせるだけにしている。
  */
 const TimerPanel: React.FC = () => {
-  const { state, startTimer, stopTimer, cancelTimerStart, selectTimerTarget, deleteGroupTiming } = useCompetition();
+  const { state, startTimer, stopTimer, cancelTimerStart, selectTimerTarget } = useCompetition();
   const competition = state.competition;
   const timer = competition?.timer ?? INITIAL_TIMER_STATE;
   const running = timer.startedAt !== null;
@@ -56,8 +55,6 @@ const TimerPanel: React.FC = () => {
     const id = setInterval(() => setNow(Date.now()), 250);
     return () => clearInterval(id);
   }, [running]);
-
-  const [deleteTarget, setDeleteTarget] = useState<{ roundNumber: number; group: number } | null>(null);
 
   const groupNumbers = useMemo(
     () => getGroupNumbers(competition?.participants ?? []),
@@ -214,18 +211,6 @@ const TimerPanel: React.FC = () => {
                     <td className={isOverFinalBell(seconds, finalBellSeconds) ? 'over' : ''}>
                       {formatDuration(seconds)}
                     </td>
-                    {!isFinished && (
-                      <td>
-                        <button
-                          type="button"
-                          className="timer-record-delete"
-                          aria-label={`${timing.roundNumber}立目 グループ${timing.group}の記録を削除`}
-                          onClick={() => setDeleteTarget({ roundNumber: timing.roundNumber, group: timing.group })}
-                        >
-                          ✕
-                        </button>
-                      </td>
-                    )}
                   </tr>
                 );
               })}
@@ -233,19 +218,6 @@ const TimerPanel: React.FC = () => {
           </table>
         )}
       </div>
-
-      <ConfirmModal
-        isOpen={deleteTarget !== null}
-        title={deleteTarget ? `${deleteTarget.roundNumber}立目 グループ${deleteTarget.group}の記録を削除しますか？` : ''}
-        message="計り直すときは、待機中に「次に計る組」でこの組を選んでスタートしてください"
-        confirmLabel="削除する"
-        danger={true}
-        onConfirm={() => {
-          if (deleteTarget) deleteGroupTiming(deleteTarget.roundNumber, deleteTarget.group);
-          setDeleteTarget(null);
-        }}
-        onCancel={() => setDeleteTarget(null)}
-      />
     </aside>
   );
 };

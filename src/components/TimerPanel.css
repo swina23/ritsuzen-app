@@ -246,17 +246,6 @@
   font-weight: bold;
 }
 
-.timer-record-delete {
-  min-width: 36px;
-  min-height: 36px;
-  padding: 4px 10px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  background-color: #fff;
-  color: #999;
-  cursor: pointer;
-}
-
 /* 狭い画面では入力表の上に出す（計時中に下までスクロールしなくて済むように） */
 @media (max-width: 768px) {
   .timer-panel {

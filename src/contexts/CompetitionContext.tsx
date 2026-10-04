@@ -35,7 +35,6 @@ interface CompetitionContextType {
   cancelTimerStart: () => void;
   /** 待機中に、次に計る組を選び直す */
   selectTimerTarget: (roundNumber: number, group: number) => void;
-  deleteGroupTiming: (roundNumber: number, group: number) => void;
 }
 
 type CompetitionAction =
@@ -56,8 +55,7 @@ type CompetitionAction =
   | { type: 'START_TIMER'; payload: { now: number } }
   | { type: 'STOP_TIMER'; payload: { now: number } }
   | { type: 'CANCEL_TIMER_START' }
-  | { type: 'SELECT_TIMER_TARGET'; payload: { roundNumber: number; group: number } }
-  | { type: 'DELETE_GROUP_TIMING'; payload: { roundNumber: number; group: number } };
+  | { type: 'SELECT_TIMER_TARGET'; payload: { roundNumber: number; group: number } };
 
 const initialState: CompetitionState = {
   competition: null,
@@ -377,22 +375,6 @@ const competitionReducer = (state: CompetitionState, action: CompetitionAction):
       };
     }
 
-    case 'DELETE_GROUP_TIMING': {
-      if (!state.competition) return state;
-      const { roundNumber, group } = action.payload;
-
-      return {
-        ...state,
-        competition: {
-          ...state.competition,
-          groupTimings: (state.competition.groupTimings ?? []).filter(
-            t => !(t.roundNumber === roundNumber && t.group === group)
-          ),
-          updatedAt: new Date().toISOString()
-        }
-      };
-    }
-
     default:
       return state;
   }
@@ -588,10 +570,6 @@ export const CompetitionProvider: React.FC<{ children: ReactNode }> = ({ childre
     dispatch({ type: 'SELECT_TIMER_TARGET', payload: { roundNumber, group } });
   };
 
-  const deleteGroupTiming = (roundNumber: number, group: number) => {
-    dispatch({ type: 'DELETE_GROUP_TIMING', payload: { roundNumber, group } });
-  };
-
   return (
     <CompetitionContext.Provider value={{
       state,
@@ -609,8 +587,7 @@ export const CompetitionProvider: React.FC<{ children: ReactNode }> = ({ childre
       startTimer,
       stopTimer: stopTimerAction,
       cancelTimerStart,
-      selectTimerTarget,
-      deleteGroupTiming
+      selectTimerTarget
     }}>
       {children}
     </CompetitionContext.Provider>
