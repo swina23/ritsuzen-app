@@ -15,7 +15,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { useCompetition } from '../contexts/CompetitionContext';
-import { formatRank } from '../utils/formatters';
+import { formatGroup, formatRank } from '../utils/formatters';
 import { RANK_OPTIONS } from '../utils/constants';
 import { storageManager } from '../utils/StorageManager';
 import { normalizeParticipantName } from '../utils/participantName';
@@ -518,7 +518,7 @@ const ParticipantSetup: React.FC = () => {
                   participantGroups.map((groupParticipants, groupIndex) => (
                     <React.Fragment key={`group-${groupIndex}`}>
                       <li className={`group-header group-${groupParticipants[0]?.group || groupIndex + 1}`}>
-                        グループ{groupParticipants[0]?.group || groupIndex + 1} ({groupParticipants.length}人)
+                        {formatGroup(groupParticipants[0]?.group || groupIndex + 1)} ({groupParticipants.length}人)
                       </li>
                       {groupParticipants.map((participant) => {
                         const globalIndex = sortedParticipants.findIndex(p => p.id === participant.id);

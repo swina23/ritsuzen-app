@@ -4,6 +4,7 @@ import { Participant } from '../types';
 import { getShotDisplay, getShotClass } from '../utils/shotHelpers';
 import { findNextShot, getShootingOrderForRound } from '../utils/shootingOrder';
 import { getGroupInfo } from '../utils/grouping';
+import { formatGroup } from '../utils/formatters';
 import TimerPanel from './TimerPanel';
 
 const ScoreInput: React.FC = () => {
@@ -130,7 +131,7 @@ const ScoreInput: React.FC = () => {
                       <React.Fragment key={`group-${groupNum}`}>
                         <tr className={`group-header-row group-${groupNum}`}>
                           <td colSpan={7}>
-                            グループ{groupNum} ({groupParticipants.length}人)
+                            {formatGroup(groupNum)} ({groupParticipants.length}人)
                           </td>
                         </tr>
                         {groupParticipants.map((participant) => {

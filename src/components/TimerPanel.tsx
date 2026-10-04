@@ -16,6 +16,7 @@ import {
   TimerPhase,
   toElapsedSeconds
 } from '../utils/timing';
+import { formatGroup } from '../utils/formatters';
 import './TimerPanel.css';
 
 const PHASE_LABELS: Record<TimerPhase, string> = {
@@ -95,7 +96,7 @@ const TimerPanel: React.FC = () => {
   return (
     <aside className={`timer-panel phase-${phase}`} aria-label="計時">
       <div className="timer-target">
-        {complete ? '全組の計測が終わりました' : `${timer.roundNumber}立目 グループ${targetGroup}`}
+        {complete ? '全組の計測が終わりました' : `${timer.roundNumber}立目 ${formatGroup(targetGroup)}`}
       </div>
 
       <div className="timer-gauge">
@@ -187,7 +188,7 @@ const TimerPanel: React.FC = () => {
               >
                 {complete && <option value="" disabled>-</option>}
                 {groupNumbers.map(group => (
-                  <option key={group} value={group}>グループ{group}</option>
+                  <option key={group} value={group}>{formatGroup(group)}</option>
                 ))}
               </select>
             </div>
@@ -207,7 +208,7 @@ const TimerPanel: React.FC = () => {
                 return (
                   <tr key={`${timing.roundNumber}-${timing.group}`}>
                     <td>{timing.roundNumber}立目</td>
-                    <td>グループ{timing.group}</td>
+                    <td>{formatGroup(timing.group)}</td>
                     <td className={isOverFinalBell(seconds, finalBellSeconds) ? 'over' : ''}>
                       {formatDuration(seconds)}
                     </td>
