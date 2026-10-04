@@ -517,6 +517,20 @@ const buildAndDownloadExcel = async (
       handicapRow.getCell(1).font = { size: 11 };
       handicapRow.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
     }
+
+    // 入賞者以外も讃えるため、ハンデ調整後の的中がプラスの人を並べる。
+    // 順位のように見えないよう、表と同じ登録順で、数字は付けずに名前だけ出す
+    const positiveNames = sortedRecords
+      .filter(record => record.adjustedScore >= 1)
+      .map(record => participants.find(p => p.id === record.participantId))
+      .filter((participant): participant is Participant => participant !== undefined)
+      .map(participant => `${participant.name}さん`);
+    const positiveText = `ハンディ換算後に的中が1以上の方は、${
+      positiveNames.length > 0 ? positiveNames.join('、') : '該当者なし'
+    }`;
+    const positiveRow = worksheet.addRow([positiveText]);
+    positiveRow.getCell(1).font = { size: 11 };
+    positiveRow.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
   }
   
   // 列幅の設定（動的生成）
