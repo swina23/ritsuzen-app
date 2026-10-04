@@ -29,8 +29,8 @@ export const DEFAULT_FINAL_BELL_SECONDS = 480;
 /** 予鈴は本鈴の何秒前か。どの大会でも30秒で固定なので設定項目にはしない */
 export const WARNING_BELL_OFFSET_SECONDS = 30;
 
-/** 予鈴の何秒前から「まもなく予鈴」と知らせるか */
-export const WARNING_NOTICE_LEAD_SECONDS = 5;
+/** 予鈴・本鈴の何秒前から「まもなく予鈴」「まもなく本鈴」と知らせるか */
+export const BELL_NOTICE_LEAD_SECONDS = 5;
 
 /** ストップで次の組が自動スタートしたあと、そのスタートを取り消せる時間（秒） */
 export const CANCEL_AUTO_START_WINDOW_SECONDS = 60;

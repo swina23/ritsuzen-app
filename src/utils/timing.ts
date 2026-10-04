@@ -10,7 +10,7 @@ import { Competition, GroupTiming, Participant, TimerState } from '../types';
 import {
   DEFAULT_FINAL_BELL_SECONDS,
   WARNING_BELL_OFFSET_SECONDS,
-  WARNING_NOTICE_LEAD_SECONDS
+  BELL_NOTICE_LEAD_SECONDS
 } from './constants';
 
 export const INITIAL_TIMER_STATE: TimerState = {
@@ -112,7 +112,7 @@ export const getTimingSeconds = (timing: GroupTiming): number =>
 export const isOverFinalBell = (seconds: number, finalBellSeconds: number): boolean =>
   seconds >= finalBellSeconds;
 
-export type TimerPhase = 'idle' | 'running' | 'soon' | 'warning' | 'over';
+export type TimerPhase = 'idle' | 'running' | 'soon' | 'warning' | 'finalSoon' | 'over';
 
 export const getTimerPhase = (
   elapsedSeconds: number | null,
@@ -121,8 +121,10 @@ export const getTimerPhase = (
   if (elapsedSeconds === null) return 'idle';
   const warningBellSeconds = getWarningBellSeconds(finalBellSeconds);
   if (isOverFinalBell(elapsedSeconds, finalBellSeconds)) return 'over';
+  // 鈴は係の人が鳴らすので、どちらも数秒前に予告して準備できるようにする
+  if (elapsedSeconds >= finalBellSeconds - BELL_NOTICE_LEAD_SECONDS) return 'finalSoon';
   if (elapsedSeconds >= warningBellSeconds) return 'warning';
-  if (elapsedSeconds >= warningBellSeconds - WARNING_NOTICE_LEAD_SECONDS) return 'soon';
+  if (elapsedSeconds >= warningBellSeconds - BELL_NOTICE_LEAD_SECONDS) return 'soon';
   return 'running';
 };
 

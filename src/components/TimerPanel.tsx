@@ -24,6 +24,7 @@ const PHASE_LABELS: Record<TimerPhase, string> = {
   running: '計測中',
   soon: 'まもなく予鈴',
   warning: '予鈴',
+  finalSoon: 'まもなく本鈴',
   over: '本鈴'
 };
 
