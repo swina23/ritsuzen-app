@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { useCompetition } from '../contexts/CompetitionContext';
 import { Participant } from '../types';
 import { getShotDisplay, getShotClass } from '../utils/shotHelpers';
@@ -63,22 +63,6 @@ const ScoreInput: React.FC = () => {
       state.competition.enableRotation
     );
   }, [state.competition?.participants, state.competition?.records, state.competition?.enableRotation, selectedRound]);
-
-  // 計時の組が次の立目に進んだら、入力表もその立目に切り替える。
-  // ストップは記録の入力より先に押されることが多いので、見ている立目の入力が終わるまで待つ。
-  // 追従は立目が変わったときに1回だけなので、手で別の立目を開いて直している間は勝手に戻らない
-  const timerRound = state.competition?.timer?.roundNumber;
-  const roundsCount = state.competition?.roundsCount;
-  const followedTimerRoundRef = useRef<number | null>(null);
-  useEffect(() => {
-    if (timerRound === undefined || roundsCount === undefined || timerRound > roundsCount) return;
-    if (followedTimerRoundRef.current === timerRound) return;
-    // 画面を開いたときは、入力の途中でも計時の立目を見せる
-    const isFirst = followedTimerRoundRef.current === null;
-    if (!isFirst && nextShot !== null) return;
-    followedTimerRoundRef.current = timerRound;
-    setSelectedRound(timerRound);
-  }, [timerRound, roundsCount, nextShot]);
 
   if (!state.competition || state.competition.participants.length === 0) {
     return <div>参加者を登録してください</div>;
