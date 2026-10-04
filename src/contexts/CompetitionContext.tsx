@@ -6,14 +6,16 @@ import { useAuth } from './AuthContext';
 import { LocalStorageBackend } from '../lib/storage/LocalStorageBackend';
 import type { StorageBackend } from '../lib/storage/StorageBackend';
 import { generateCompetitionId, generateParticipantId } from '../utils/idGeneration';
-import { DEFAULT_ROUNDS_COUNT } from '../utils/constants';
+import { DEFAULT_FINAL_BELL_SECONDS, DEFAULT_ROUNDS_COUNT, STOP_AFTER_AUTO_START_GUARD_SECONDS } from '../utils/constants';
+import { getGroupNumbers, INITIAL_TIMER_STATE, isTimingComplete, resolveTimerGroup, stopTimer } from '../utils/timing';
+import { useWakeLock } from '../hooks/useWakeLock';
 import { normalizeCompetition } from '../utils/competitionMigration';
 import { moveParticipantUp as moveUp, moveParticipantDown as moveDown } from '../utils/arrayUtils';
 import { applyAutoGrouping as autoGroup, moveParticipantToGroup as moveToGroup, clearGrouping as clearGroup } from '../utils/grouping';
 
 interface CompetitionContextType {
   state: CompetitionState;
-  createCompetition: (name: string, date: string, handicapEnabled: boolean, enableRotation: boolean, roundsCount?: number) => void;
+  createCompetition: (name: string, date: string, handicapEnabled: boolean, enableRotation: boolean, roundsCount?: number, finalBellSeconds?: number) => void;
   addParticipant: (participant: Omit<Participant, 'id' | 'order'>) => void;
   removeParticipant: (participantId: string) => void;
   moveParticipantUp: (participantId: string) => void;
@@ -25,10 +27,19 @@ interface CompetitionContextType {
   updateShot: (participantId: string, roundNumber: number, shotIndex: number, hit: boolean | null) => void;
   /** 戻り値は「サーバーまで届いたか」。圏外では端末内のキューに残る */
   finishCompetition: () => Promise<boolean>;
+  /** 待機中の組の計測を始める */
+  startTimer: () => void;
+  /** 今の組の計測を終え、次の組の計測を同時に始める */
+  stopTimer: () => void;
+  /** 自動で始まった次の組の計測を取り消し、待機に戻す */
+  cancelTimerStart: () => void;
+  /** 待機中に、次に計る組を選び直す */
+  selectTimerTarget: (roundNumber: number, group: number) => void;
+  deleteGroupTiming: (roundNumber: number, group: number) => void;
 }
 
 type CompetitionAction =
-  | { type: 'CREATE_COMPETITION'; payload: { name: string; date: string; handicapEnabled: boolean; enableRotation: boolean; roundsCount?: number } }
+  | { type: 'CREATE_COMPETITION'; payload: { name: string; date: string; handicapEnabled: boolean; enableRotation: boolean; roundsCount?: number; finalBellSeconds?: number } }
   | { type: 'ADD_PARTICIPANT'; payload: Omit<Participant, 'id' | 'order'> }
   | { type: 'REMOVE_PARTICIPANT'; payload: string }
   | { type: 'MOVE_PARTICIPANT_UP'; payload: string }
@@ -40,7 +51,13 @@ type CompetitionAction =
   | { type: 'UPDATE_SHOT'; payload: { participantId: string; roundNumber: number; shotIndex: number; hit: boolean | null } }
   | { type: 'CLEAR_CURRENT_COMPETITION' }
   | { type: 'RESET_FOR_BACKEND_SWITCH' }
-  | { type: 'LOAD_COMPETITION'; payload: Competition | null };
+  | { type: 'LOAD_COMPETITION'; payload: Competition | null }
+  // 時刻はreducerの外で取って渡す（reducerを純粋に保つため）
+  | { type: 'START_TIMER'; payload: { now: number } }
+  | { type: 'STOP_TIMER'; payload: { now: number } }
+  | { type: 'CANCEL_TIMER_START' }
+  | { type: 'SELECT_TIMER_TARGET'; payload: { roundNumber: number; group: number } }
+  | { type: 'DELETE_GROUP_TIMING'; payload: { roundNumber: number; group: number } };
 
 const initialState: CompetitionState = {
   competition: null,
@@ -55,7 +72,14 @@ const CompetitionContext = createContext<CompetitionContextType | undefined>(und
 const competitionReducer = (state: CompetitionState, action: CompetitionAction): CompetitionState => {
   switch (action.type) {
     case 'CREATE_COMPETITION': {
-      const { name, date, handicapEnabled, enableRotation, roundsCount = DEFAULT_ROUNDS_COUNT } = action.payload;
+      const {
+        name,
+        date,
+        handicapEnabled,
+        enableRotation,
+        roundsCount = DEFAULT_ROUNDS_COUNT,
+        finalBellSeconds = DEFAULT_FINAL_BELL_SECONDS
+      } = action.payload;
       const competition: Competition = {
         id: generateCompetitionId(),
         name,
@@ -67,6 +91,9 @@ const competitionReducer = (state: CompetitionState, action: CompetitionAction):
         roundsCount,
         participants: [],
         records: [],
+        finalBellSeconds,
+        groupTimings: [],
+        timer: INITIAL_TIMER_STATE,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
@@ -285,6 +312,87 @@ const competitionReducer = (state: CompetitionState, action: CompetitionAction):
       };
     }
 
+    case 'START_TIMER': {
+      if (!state.competition) return state;
+      const timer = state.competition.timer ?? INITIAL_TIMER_STATE;
+      if (timer.startedAt !== null) return state;
+      if (isTimingComplete(timer, state.competition.roundsCount)) return state;
+      // 待機中に組分けを変えていると、選んでいた組が無くなっていることがある
+      const group = resolveTimerGroup(timer.group, getGroupNumbers(state.competition.participants));
+
+      return {
+        ...state,
+        competition: {
+          ...state.competition,
+          timer: { ...timer, group, startedAt: action.payload.now, autoStarted: false },
+          updatedAt: new Date().toISOString()
+        }
+      };
+    }
+
+    case 'STOP_TIMER': {
+      if (!state.competition) return state;
+      const timer = state.competition.timer;
+      if (timer?.startedAt == null) return state;
+      // ストップの2度押しで、自動スタートしたばかりの組を0秒で記録しない
+      if (timer.autoStarted && action.payload.now - timer.startedAt < STOP_AFTER_AUTO_START_GUARD_SECONDS * 1000) {
+        return state;
+      }
+
+      return {
+        ...state,
+        competition: {
+          ...state.competition,
+          ...stopTimer(state.competition, action.payload.now),
+          updatedAt: new Date().toISOString()
+        }
+      };
+    }
+
+    case 'CANCEL_TIMER_START': {
+      if (state.competition?.timer?.startedAt == null) return state;
+
+      return {
+        ...state,
+        competition: {
+          ...state.competition,
+          timer: { ...state.competition.timer, startedAt: null, autoStarted: false },
+          updatedAt: new Date().toISOString()
+        }
+      };
+    }
+
+    case 'SELECT_TIMER_TARGET': {
+      if (!state.competition) return state;
+      // 計測中に組を変えると、その組の開始時刻が別の組のものになってしまう
+      if (state.competition.timer?.startedAt != null) return state;
+
+      return {
+        ...state,
+        competition: {
+          ...state.competition,
+          timer: { ...action.payload, startedAt: null, autoStarted: false },
+          updatedAt: new Date().toISOString()
+        }
+      };
+    }
+
+    case 'DELETE_GROUP_TIMING': {
+      if (!state.competition) return state;
+      const { roundNumber, group } = action.payload;
+
+      return {
+        ...state,
+        competition: {
+          ...state.competition,
+          groupTimings: (state.competition.groupTimings ?? []).filter(
+            t => !(t.roundNumber === roundNumber && t.group === group)
+          ),
+          updatedAt: new Date().toISOString()
+        }
+      };
+    }
+
     default:
       return state;
   }
@@ -293,6 +401,9 @@ const competitionReducer = (state: CompetitionState, action: CompetitionAction):
 export const CompetitionProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(competitionReducer, initialState);
   const { status } = useAuth();
+
+  // 計測中は画面を消さない。計時パネルを閉じる画面（結果など）に移っても計測は続くので、ここで持つ
+  useWakeLock(state.competition?.timer?.startedAt != null);
 
   /**
    * 認証状態から保存先を決めて購読を開始し、初回スナップショットが揃ってから読み込む。
@@ -383,8 +494,15 @@ export const CompetitionProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
   }, [state.competition, state.loading]);
 
-  const createCompetition = (name: string, date: string, handicapEnabled: boolean, enableRotation: boolean, roundsCount: number = DEFAULT_ROUNDS_COUNT) => {
-    dispatch({ type: 'CREATE_COMPETITION', payload: { name, date, handicapEnabled, enableRotation, roundsCount } });
+  const createCompetition = (
+    name: string,
+    date: string,
+    handicapEnabled: boolean,
+    enableRotation: boolean,
+    roundsCount: number = DEFAULT_ROUNDS_COUNT,
+    finalBellSeconds: number = DEFAULT_FINAL_BELL_SECONDS
+  ) => {
+    dispatch({ type: 'CREATE_COMPETITION', payload: { name, date, handicapEnabled, enableRotation, roundsCount, finalBellSeconds } });
   };
 
   const addParticipant = (participant: Omit<Participant, 'id' | 'order'>) => {
@@ -436,6 +554,10 @@ export const CompetitionProvider: React.FC<{ children: ReactNode }> = ({ childre
     const finished: Competition = {
       ...state.competition,
       status: 'finished',
+      // 計測中のまま終えると、履歴から開いたときに止められない計測が残る
+      ...(state.competition.timer && {
+        timer: { ...state.competition.timer, startedAt: null, autoStarted: false }
+      }),
       updatedAt: new Date().toISOString()
     };
 
@@ -448,6 +570,26 @@ export const CompetitionProvider: React.FC<{ children: ReactNode }> = ({ childre
     // 戻り値を受け取った側(App)が知らせる。
     dispatch({ type: 'CLEAR_CURRENT_COMPETITION' });
     return sent;
+  };
+
+  const startTimer = () => {
+    dispatch({ type: 'START_TIMER', payload: { now: Date.now() } });
+  };
+
+  const stopTimerAction = () => {
+    dispatch({ type: 'STOP_TIMER', payload: { now: Date.now() } });
+  };
+
+  const cancelTimerStart = () => {
+    dispatch({ type: 'CANCEL_TIMER_START' });
+  };
+
+  const selectTimerTarget = (roundNumber: number, group: number) => {
+    dispatch({ type: 'SELECT_TIMER_TARGET', payload: { roundNumber, group } });
+  };
+
+  const deleteGroupTiming = (roundNumber: number, group: number) => {
+    dispatch({ type: 'DELETE_GROUP_TIMING', payload: { roundNumber, group } });
   };
 
   return (
@@ -463,7 +605,12 @@ export const CompetitionProvider: React.FC<{ children: ReactNode }> = ({ childre
       moveParticipantToGroup,
       clearGrouping,
       updateShot,
-      finishCompetition
+      finishCompetition,
+      startTimer,
+      stopTimer: stopTimerAction,
+      cancelTimerStart,
+      selectTimerTarget,
+      deleteGroupTiming
     }}>
       {children}
     </CompetitionContext.Provider>

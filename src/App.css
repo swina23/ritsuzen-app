@@ -271,6 +271,28 @@
   font-size: 14px;
 }
 
+.bell-time-inputs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bell-time-inputs input {
+  width: 64px;
+}
+
+.bell-time-inputs span {
+  color: #555;
+}
+
+.bell-time-note {
+  color: #666;
+}
+
+.bell-time-note.error {
+  color: #f44336;
+}
+
 .create-btn, .add-btn {
   padding: 12px 24px;
   background-color: #2196f3;
@@ -450,6 +472,28 @@
   background-color: #2196f3;
   color: white;
   border-color: #2196f3;
+}
+
+.score-input-layout {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+}
+
+.score-input-main {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 狭い画面では計時パネルを入力表の上に出す */
+@media (max-width: 768px) {
+  .score-input-layout {
+    flex-direction: column;
+  }
+
+  .score-input-layout .timer-panel {
+    order: -1;
+  }
 }
 
 .score-table {

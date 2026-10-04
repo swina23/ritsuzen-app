@@ -30,6 +30,31 @@ export interface ParticipantRecord {
   rankWithHandicap: number;
 }
 
+/** 1つの組（グループ）が1立を引き終えるまでの計時記録。時刻はエポックミリ秒 */
+export interface GroupTiming {
+  roundNumber: number;
+  group: number;
+  startedAt: number;
+  endedAt: number;
+}
+
+/**
+ * 計時の進行状態。
+ *
+ * 経過時間そのものではなく開始時刻を保存するので、再読み込みや画面の切り替えを
+ * はさんでも経過時間がずれない。roundNumber が立数を超えたら全組の計測が終わった状態。
+ */
+export interface TimerState {
+  /** 次に計る（または計測中の）立目 */
+  roundNumber: number;
+  /** 次に計る（または計測中の）グループ番号 */
+  group: number;
+  /** 計測中なら開始時刻。待機中は null */
+  startedAt: number | null;
+  /** 前の組のストップで自動的に始まった計測か。取り消しボタンを出すかの判定に使う */
+  autoStarted: boolean;
+}
+
 export interface Competition {
   id: string;
   name: string;
@@ -41,6 +66,15 @@ export interface Competition {
   roundsCount: number; // 立数 (5, 10, 15, 20, 25)
   participants: Participant[];
   records: ParticipantRecord[];
+  /**
+   * 本鈴までの秒数。予鈴はこの30秒前で固定。
+   * 計時機能より前の大会には無いため任意（normalizeCompetitionで補う）
+   */
+  finalBellSeconds?: number;
+  /** 組ごとの所要時間の記録 */
+  groupTimings?: GroupTiming[];
+  /** 計時の進行状態 */
+  timer?: TimerState;
   createdAt: string;
   updatedAt: string;
 }

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useCompetition } from '../contexts/CompetitionContext';
-import { ROUNDS_OPTIONS } from '../utils/constants';
+import { DEFAULT_FINAL_BELL_SECONDS, ROUNDS_OPTIONS, WARNING_BELL_OFFSET_SECONDS } from '../utils/constants';
+import { formatDuration, getWarningBellSeconds } from '../utils/timing';
 import { getTodayJapaneseDate } from '../utils/dateUtils';
 
 const CompetitionSetup: React.FC = () => {
@@ -11,13 +12,19 @@ const CompetitionSetup: React.FC = () => {
   const [handicapEnabled, setHandicapEnabled] = useState(true);
   const [enableRotation, setEnableRotation] = useState(true);
   const [roundsCount, setRoundsCount] = useState(5);
+  const [finalBellMinutes, setFinalBellMinutes] = useState(Math.floor(DEFAULT_FINAL_BELL_SECONDS / 60));
+  const [finalBellSecondsPart, setFinalBellSecondsPart] = useState(DEFAULT_FINAL_BELL_SECONDS % 60);
+
+  const finalBellSeconds = finalBellMinutes * 60 + finalBellSecondsPart;
+  // 予鈴が0秒以下になる設定は計時の意味をなさない
+  const isFinalBellValid = finalBellSeconds > WARNING_BELL_OFFSET_SECONDS;
 
   const hasActiveCompetition = state.competition !== null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!hasActiveCompetition) {
-      createCompetition(name, date, handicapEnabled, enableRotation, roundsCount);
+    if (!hasActiveCompetition && isFinalBellValid) {
+      createCompetition(name, date, handicapEnabled, enableRotation, roundsCount, finalBellSeconds);
     }
   };
 
@@ -76,6 +83,44 @@ const CompetitionSetup: React.FC = () => {
         </div>
         
         <div className="form-group">
+          <label htmlFor="final-bell-minutes">本鈴（揖からの時間）:</label>
+          <div className="bell-time-inputs">
+            <input
+              id="final-bell-minutes"
+              type="number"
+              inputMode="numeric"
+              min={0}
+              max={59}
+              value={finalBellMinutes}
+              onChange={(e) => setFinalBellMinutes(Math.min(59, Math.max(0, Math.floor(Number(e.target.value) || 0))))}
+              disabled={hasActiveCompetition}
+            />
+            <span>分</span>
+            <input
+              id="final-bell-seconds"
+              type="number"
+              inputMode="numeric"
+              min={0}
+              max={59}
+              aria-label="本鈴の秒"
+              value={finalBellSecondsPart}
+              onChange={(e) => setFinalBellSecondsPart(Math.min(59, Math.max(0, Math.floor(Number(e.target.value) || 0))))}
+              disabled={hasActiveCompetition}
+            />
+            <span>秒</span>
+          </div>
+          {isFinalBellValid ? (
+            <small className="bell-time-note">
+              予鈴は本鈴の{WARNING_BELL_OFFSET_SECONDS}秒前（{formatDuration(getWarningBellSeconds(finalBellSeconds))}）に自動で決まります
+            </small>
+          ) : (
+            <small className="bell-time-note error">
+              本鈴は{WARNING_BELL_OFFSET_SECONDS}秒より長くしてください
+            </small>
+          )}
+        </div>
+
+        <div className="form-group">
           <label>
             <input
               type="checkbox"
@@ -102,7 +147,7 @@ const CompetitionSetup: React.FC = () => {
         <button
           type="submit"
           className="create-btn"
-          disabled={hasActiveCompetition}
+          disabled={hasActiveCompetition || !isFinalBellValid}
           title={hasActiveCompetition ? '現在の大会を終了してから新規作成してください' : ''}
         >
           大会を作成
