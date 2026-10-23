@@ -416,8 +416,8 @@ const buildAndDownloadExcel = async (
       }
     });
     
-    // 的中10中以上のハイライト
-    if (record.totalHits >= 10) {
+    // 実際に射た矢数の半分以上を的中した場合のハイライト
+    if (actualShotsCount > 0 && record.totalHits * 2 >= actualShotsCount) {
       // 的中数のセルをハイライト
       const totalHitsCol = 3 + (competition.roundsCount * 5); // 的中数の列
       const totalHitsCell = dataRow.getCell(totalHitsCol);
