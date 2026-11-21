@@ -249,6 +249,19 @@
   font-weight: bold;
 }
 
+/* 本番中に押し間違えないよう、スタート・ストップより控えめにする */
+.timer-reset-btn {
+  margin-top: 10px;
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #e57373;
+  border-radius: 6px;
+  background-color: #fff;
+  color: #d32f2f;
+  font-size: 14px;
+  cursor: pointer;
+}
+
 /* 狭い画面では入力表の上に出す（計時中に下までスクロールしなくて済むように） */
 @media (max-width: 768px) {
   .timer-panel {

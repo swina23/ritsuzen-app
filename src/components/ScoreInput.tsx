@@ -6,6 +6,7 @@ import { findNextShot, getShootingOrderForRound } from '../utils/shootingOrder';
 import { getGroupInfo } from '../utils/grouping';
 import { formatGroup } from '../utils/formatters';
 import TimerPanel from './TimerPanel';
+import { isTimingEnabled } from '../utils/timing';
 
 const ScoreInput: React.FC = () => {
   const { state, updateShot } = useCompetition();
@@ -206,7 +207,8 @@ const ScoreInput: React.FC = () => {
       </div>
       </div>
 
-      <TimerPanel />
+      {/* 計時は2グループ以上に分けた試合だけで使う */}
+      {state.competition && isTimingEnabled(state.competition.participants) && <TimerPanel />}
       </div>
     </div>
   );

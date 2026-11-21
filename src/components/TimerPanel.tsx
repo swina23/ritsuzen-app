@@ -17,6 +17,7 @@ import {
   toElapsedSeconds
 } from '../utils/timing';
 import { formatGroup } from '../utils/formatters';
+import ConfirmModal from './ConfirmModal';
 import './TimerPanel.css';
 
 const PHASE_LABELS: Record<TimerPhase, string> = {
@@ -45,10 +46,11 @@ const pointOnCircle = (degrees: number, radius: number) => {
  * 色と文字で知らせるだけにしている。
  */
 const TimerPanel: React.FC = () => {
-  const { state, startTimer, stopTimer, cancelTimerStart, selectTimerTarget } = useCompetition();
+  const { state, startTimer, stopTimer, cancelTimerStart, selectTimerTarget, resetTiming } = useCompetition();
   const competition = state.competition;
   const timer = competition?.timer ?? INITIAL_TIMER_STATE;
   const running = timer.startedAt !== null;
+  const [confirmingReset, setConfirmingReset] = useState(false);
 
   // 表示の更新用。経過時間そのものは保存した開始時刻から毎回計算する
   const [now, setNow] = useState(() => Date.now());
@@ -212,7 +214,27 @@ const TimerPanel: React.FC = () => {
             </tbody>
           </table>
         )}
+        {/* 本番前のテスト計測を消すため。計測中は止めてから消してもらう */}
+        {/* 記録が無くても、テストで立目や組を選び替えただけのときは初期の位置に戻せるようにする */}
+        {!isFinished && !running && (groupTimings.length > 0 || timer.roundNumber !== 1 || targetGroup !== groupNumbers[0]) && (
+          <button type="button" className="timer-reset-btn" onClick={() => setConfirmingReset(true)}>
+            計測記録をリセット
+          </button>
+        )}
       </div>
+
+      <ConfirmModal
+        isOpen={confirmingReset}
+        title="計測記録をリセットしますか？"
+        message={'・すべての計測記録が消えます\n・時計は1立目の最初のグループの待機に戻ります\n・的中の記録や参加者はそのまま残ります\n\n※消した計測記録は元に戻せません'}
+        confirmLabel="リセットする"
+        danger
+        onConfirm={() => {
+          resetTiming();
+          setConfirmingReset(false);
+        }}
+        onCancel={() => setConfirmingReset(false)}
+      />
     </aside>
   );
 };

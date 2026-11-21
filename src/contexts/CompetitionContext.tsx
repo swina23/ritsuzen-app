@@ -7,7 +7,7 @@ import { LocalStorageBackend } from '../lib/storage/LocalStorageBackend';
 import type { StorageBackend } from '../lib/storage/StorageBackend';
 import { generateCompetitionId, generateParticipantId } from '../utils/idGeneration';
 import { DEFAULT_FINAL_BELL_SECONDS, DEFAULT_ROUNDS_COUNT, STOP_AFTER_AUTO_START_GUARD_SECONDS } from '../utils/constants';
-import { getGroupNumbers, INITIAL_TIMER_STATE, isTimingComplete, resolveTimerGroup, stopTimer } from '../utils/timing';
+import { getGroupNumbers, INITIAL_TIMER_STATE, isTimingComplete, isTimingEnabled, resolveTimerGroup, stopTimer } from '../utils/timing';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { normalizeCompetition } from '../utils/competitionMigration';
 import { moveParticipantUp as moveUp, moveParticipantDown as moveDown } from '../utils/arrayUtils';
@@ -35,6 +35,8 @@ interface CompetitionContextType {
   cancelTimerStart: () => void;
   /** 待機中に、次に計る組を選び直す */
   selectTimerTarget: (roundNumber: number, group: number) => void;
+  /** 計測記録をすべて消し、1立目の最初の組の待機に戻す（本番前のテスト計測を消すため） */
+  resetTiming: () => void;
 }
 
 type CompetitionAction =
@@ -55,7 +57,8 @@ type CompetitionAction =
   | { type: 'START_TIMER'; payload: { now: number } }
   | { type: 'STOP_TIMER'; payload: { now: number } }
   | { type: 'CANCEL_TIMER_START' }
-  | { type: 'SELECT_TIMER_TARGET'; payload: { roundNumber: number; group: number } };
+  | { type: 'SELECT_TIMER_TARGET'; payload: { roundNumber: number; group: number } }
+  | { type: 'RESET_TIMING' };
 
 const initialState: CompetitionState = {
   competition: null,
@@ -375,13 +378,48 @@ const competitionReducer = (state: CompetitionState, action: CompetitionAction):
       };
     }
 
+    case 'RESET_TIMING': {
+      if (!state.competition) return state;
+      // 計測中に消すと、走っている組の開始時刻だけが宙に浮く。止めてから消してもらう
+      if (state.competition.timer?.startedAt != null) return state;
+
+      return {
+        ...state,
+        competition: {
+          ...state.competition,
+          groupTimings: [],
+          timer: INITIAL_TIMER_STATE,
+          updatedAt: new Date().toISOString()
+        }
+      };
+    }
+
     default:
       return state;
   }
 };
 
+/**
+ * グループ分けを解除する・1グループにまとめる・参加者を減らすなどで計時を使わない大会になったら、
+ * 計測中の組を待機に戻す。計時パネルが隠れたまま計測が続き、画面消灯の抑止も解けなくなるのを防ぐ
+ */
+const reducerWithTimingGuard = (state: CompetitionState, action: CompetitionAction): CompetitionState => {
+  const next = competitionReducer(state, action);
+  const competition = next.competition;
+  if (!competition?.timer || competition.timer.startedAt === null) return next;
+  if (isTimingEnabled(competition.participants)) return next;
+
+  return {
+    ...next,
+    competition: {
+      ...competition,
+      timer: { ...competition.timer, startedAt: null, autoStarted: false }
+    }
+  };
+};
+
 export const CompetitionProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [state, dispatch] = useReducer(competitionReducer, initialState);
+  const [state, dispatch] = useReducer(reducerWithTimingGuard, initialState);
   const { status } = useAuth();
 
   // 計測中は画面を消さない。計時パネルを閉じる画面（結果など）に移っても計測は続くので、ここで持つ
@@ -570,6 +608,10 @@ export const CompetitionProvider: React.FC<{ children: ReactNode }> = ({ childre
     dispatch({ type: 'SELECT_TIMER_TARGET', payload: { roundNumber, group } });
   };
 
+  const resetTiming = () => {
+    dispatch({ type: 'RESET_TIMING' });
+  };
+
   return (
     <CompetitionContext.Provider value={{
       state,
@@ -587,7 +629,8 @@ export const CompetitionProvider: React.FC<{ children: ReactNode }> = ({ childre
       startTimer,
       stopTimer: stopTimerAction,
       cancelTimerStart,
-      selectTimerTarget
+      selectTimerTarget,
+      resetTiming
     }}>
       {children}
     </CompetitionContext.Provider>

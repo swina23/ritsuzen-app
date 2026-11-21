@@ -31,6 +31,15 @@ export const getWarningBellSeconds = (finalBellSeconds: number): number =>
   Math.max(0, finalBellSeconds - WARNING_BELL_OFFSET_SECONDS);
 
 /**
+ * 計時を使う大会か。組ごとに引く試合（2グループ以上に分けたとき）だけ計る。
+ * 1グループだけなら全員が一度に引くので、組の所要時間を比べる意味が無い。
+ * 組分けのあとに追加した人はグループ未設定のまま1組目で引くので（grouping.ts の groupParticipants）、
+ * getGroupInfo ではなく、未設定の人を1組目に数える getGroupNumbers で数える
+ */
+export const isTimingEnabled = (participants: Participant[]): boolean =>
+  participants.some(p => p.group !== undefined) && getGroupNumbers(participants).length >= 2;
+
+/**
  * 計時の対象になるグループ番号（昇順）。
  * グループ番号は移動で歯抜けになり得るので、1〜N を仮定せず実際の番号を集める。
  * グループ未設定の人は grouping.ts の groupParticipants と同じく1組目に数える
@@ -108,12 +117,14 @@ export interface TimingTable {
 }
 
 /**
- * 結果画面とExcelに出す所要時間の表を作る。記録が1件も無ければ null。
+ * 結果画面とExcelに出す所要時間の表を作る。記録が1件も無いか、グループ分けが無ければ null。
  * 計測のあとで組分けを変えることもあるので、今の組に加えて記録にある組も行に出す
  */
 export const buildTimingTable = (competition: Competition): TimingTable | null => {
   const groupTimings = competition.groupTimings ?? [];
   if (groupTimings.length === 0) return null;
+  // 途中でグループ分けを解除した大会は、記録が残っていても計時を使わない大会として扱う
+  if (!isTimingEnabled(competition.participants)) return null;
 
   const groups = [
     ...new Set([...getGroupNumbers(competition.participants), ...groupTimings.map(t => t.group)])
